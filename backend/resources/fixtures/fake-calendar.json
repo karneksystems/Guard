@@ -1,0 +1,7 @@
+[
+  { "vendorId": "nfp-2026-10-02", "currency": "USD", "title": "Non-Farm Employment Change", "impact": "high", "scheduledAtUtc": "2026-10-02T12:30:00Z", "source": "fake calendar" },
+  { "vendorId": "cpi-eu-2026-10-01", "currency": "EUR", "title": "CPI Flash Estimate y/y", "impact": "high", "scheduledAtUtc": "2026-10-01T09:00:00Z", "source": "fake calendar" },
+  { "vendorId": "boe-2026-10-01", "currency": "GBP", "title": "BoE Official Bank Rate", "impact": "high", "scheduledAtUtc": "2026-10-01T11:00:00Z", "source": "fake calendar" },
+  { "vendorId": "pmi-2026-10-01", "currency": "USD", "title": "Chicago PMI", "impact": "medium", "scheduledAtUtc": "2026-10-01T13:45:00Z", "source": "fake calendar" },
+  { "vendorId": "opec-2026-10-05", "currency": "USD", "title": "OPEC-JMMC Meetings", "impact": "high", "scheduledAtUtc": "2026-10-05T00:00:00Z", "tentative": true, "source": "fake calendar" }
+]

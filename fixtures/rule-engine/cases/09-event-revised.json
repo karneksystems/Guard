@@ -1,0 +1,78 @@
+{
+  "name": "Moving an event cancels every old alert id and creates new ones",
+  "inputBefore": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "US500"
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      }
+    ]
+  },
+  "inputAfter": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "US500"
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T13:30:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "cancelledAlertIds": [
+      "5e081ab24fc40eb4ea5b",
+      "740bf1256886be139576",
+      "9327b169f177f3112c0f",
+      "a58dbfcba4c5f06d8800",
+      "b8cc08100c4e259a6b92",
+      "f710a1007ff04b3ca7b7"
+    ],
+    "createdAlertIds": [
+      "2ad648f098984ed5b7e7",
+      "433d4c5183a1939fd401",
+      "608bfb2aededc1993411",
+      "6afc3a4ac74176db82db",
+      "ba2fe1769ee63f0d51e0",
+      "e3faa0a8c5ee6a966ca9"
+    ],
+    "keptAlertIds": [],
+    "windowsAfter": [
+      {
+        "windowId": "8af414be662cb63e2ae6",
+        "instrument": "US500",
+        "opensAtUtc": "2026-10-02T13:25:00Z",
+        "closesAtUtc": "2026-10-02T13:35:00Z",
+        "reasons": [
+          "nfp"
+        ],
+        "verified": true
+      }
+    ]
+  }
+}

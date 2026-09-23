@@ -1,0 +1,14 @@
+name: rule_engine
+description: Rule engine for the prop-firm news guard. Pure Dart, shared by every app target. Must match fixtures/rule-engine.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  crypto: ^3.0.3
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

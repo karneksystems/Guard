@@ -1,0 +1,83 @@
+{
+  "name": "Firm match on an unverified pack uses the larger window, verified false, calendar fallback",
+  "input": {
+    "userId": "u2",
+    "settings": {
+      "mode": "firm-match",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "packId": "ftmo",
+    "accountTypeId": "ftmo-account",
+    "instruments": [
+      {
+        "symbol": "XAUUSD"
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "ac0e09dd517a51eabcf4",
+        "instrument": "XAUUSD",
+        "opensAtUtc": "2026-10-02T12:25:00Z",
+        "closesAtUtc": "2026-10-02T12:35:00Z",
+        "reasons": [
+          "nfp"
+        ],
+        "verified": false
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "b15802f1da9c5b1f56ad",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T11:25:00Z"
+      },
+      {
+        "alertId": "8db2850109f943918371",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T12:10:00Z"
+      },
+      {
+        "alertId": "06f58360ecc627293a15",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T12:20:00Z"
+      },
+      {
+        "alertId": "3fe2d163437c210a1262",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T12:24:00Z"
+      },
+      {
+        "alertId": "bb6e75bde444f3c1d789",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T12:25:00Z"
+      },
+      {
+        "alertId": "49988d6630be33cff5a3",
+        "windowId": "ac0e09dd517a51eabcf4",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T12:35:00Z"
+      }
+    ],
+    "notes": [
+      "pack unverified: using the larger of pack window and user default",
+      "using the calendar, not the firm's list"
+    ]
+  }
+}

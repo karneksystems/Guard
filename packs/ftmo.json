@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "firmId": "ftmo",
+  "firmName": "FTMO",
+  "packVersion": "2026.09.23-draft.1",
+  "sourceUrl": "https://ftmo.com/en/faq/can-i-trade-news/",
+  "sourceFetchedAt": null,
+  "lastVerified": null,
+  "verifiedBy": null,
+  "needsReverify": true,
+  "investorPasswordAllowed": "unknown",
+  "accountTypes": [
+    {
+      "id": "ftmo-account",
+      "label": "FTMO Account (funded)",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 2,
+        "windowAfterMin": 2,
+        "eventSet": "firm-list",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "Secondary sources say no warning system on standard funded accounts. The firm publishes its own restricted-event list; ingest it and set eventListUrl."
+      }
+    },
+    { "id": "challenge", "label": "FTMO Challenge", "phase": "evaluation", "newsRule": { "applies": false, "notes": "Secondary sources say news trading is allowed during evaluation. Confirm on the source page." } },
+    { "id": "verification", "label": "Verification", "phase": "evaluation", "newsRule": { "applies": false, "notes": "As for the Challenge. Confirm." } },
+    { "id": "swing", "label": "FTMO Account Swing", "phase": "funded", "newsRule": { "applies": false, "notes": "Secondary sources say Swing accounts carry no news restriction. Confirm." } }
+  ],
+  "changelog": [
+    { "packVersion": "2026.09.23-draft.1", "date": "2026-09-23", "change": "Initial draft from third-party summaries. Not read on the firm's page." }
+  ]
+}

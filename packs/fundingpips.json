@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "firmId": "fundingpips",
+  "firmName": "FundingPips",
+  "packVersion": "2026.09.23-draft.1",
+  "sourceUrl": "https://help.fundingpips.com/hc/en-us/articles/34504137479441-News-Trading-Weekend-Holding",
+  "sourceFetchedAt": null,
+  "lastVerified": null,
+  "verifiedBy": null,
+  "needsReverify": true,
+  "investorPasswordAllowed": "unknown",
+  "accountTypes": [
+    {
+      "id": "funded-regular",
+      "label": "Funded, regular",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "profit-removed",
+        "exemptIfOpenedMinutesBefore": 300,
+        "notes": "Secondary sources: profits from trades executed in the window are not counted unless the trade was opened 5 hours before the event."
+      }
+    },
+    {
+      "id": "zero",
+      "label": "FundingPips Zero",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "termination",
+        "notes": "Secondary sources: trading during news on Zero can end the account."
+      }
+    },
+    {
+      "id": "evaluation",
+      "label": "Evaluation (to confirm)",
+      "phase": "evaluation",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "profit-removed",
+        "notes": "Unconfirmed for evaluation. Unknown means restricted until verified."
+      }
+    }
+  ],
+  "changelog": [
+    { "packVersion": "2026.09.23-draft.1", "date": "2026-09-23", "change": "Initial draft from third-party summaries. Not read on the firm's page." }
+  ]
+}

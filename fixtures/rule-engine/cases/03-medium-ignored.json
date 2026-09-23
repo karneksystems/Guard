@@ -1,0 +1,30 @@
+{
+  "name": "Medium impact never opens a window",
+  "input": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "US500"
+      }
+    ],
+    "events": [
+      {
+        "id": "pmi",
+        "currency": "USD",
+        "title": "Chicago PMI",
+        "impact": "medium",
+        "scheduledAtUtc": "2026-10-01T13:45:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [],
+    "ladder": [],
+    "notes": []
+  }
+}

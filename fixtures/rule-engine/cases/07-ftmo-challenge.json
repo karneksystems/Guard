@@ -1,0 +1,34 @@
+{
+  "name": "Account type with no news rule yields no windows and says so",
+  "input": {
+    "userId": "u2",
+    "settings": {
+      "mode": "firm-match",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "packId": "ftmo",
+    "accountTypeId": "challenge",
+    "instruments": [
+      {
+        "symbol": "XAUUSD"
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [],
+    "ladder": [],
+    "notes": [
+      "firm does not restrict news on this account type"
+    ]
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "firmId": "alpha-capital",
+  "firmName": "Alpha Capital Group",
+  "packVersion": "2026.09.23-draft.1",
+  "sourceUrl": "https://help.alphacapitalgroup.uk/en/articles/9293522-can-i-trade-news",
+  "sourceFetchedAt": null,
+  "lastVerified": null,
+  "verifiedBy": null,
+  "needsReverify": true,
+  "investorPasswordAllowed": "unknown",
+  "accountTypes": [
+    {
+      "id": "alpha-pro-6",
+      "label": "Alpha Pro 6%",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "Consequence unconfirmed. Breach assumed as the restrictive reading."
+      }
+    },
+    {
+      "id": "alpha-one",
+      "label": "Alpha One",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "Consequence unconfirmed."
+      }
+    },
+    {
+      "id": "alpha-three",
+      "label": "Alpha Three",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "Consequence unconfirmed."
+      }
+    },
+    {
+      "id": "alpha-pro-8",
+      "label": "Alpha Pro 8%",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 2,
+        "windowAfterMin": 2,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "Secondary sources give a 2 minute window on Pro 8% and 10%."
+      }
+    },
+    {
+      "id": "alpha-pro-10",
+      "label": "Alpha Pro 10%",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 2,
+        "windowAfterMin": 2,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "breach",
+        "notes": "As for Pro 8%."
+      }
+    }
+  ],
+  "changelog": [
+    { "packVersion": "2026.09.23-draft.1", "date": "2026-09-23", "change": "Initial draft from third-party summaries. Not read on the firm's page. Evaluation-phase rule not captured." }
+  ]
+}

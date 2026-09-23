@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "firmId": "fundednext",
+  "firmName": "FundedNext",
+  "packVersion": "2026.09.23-draft.1",
+  "sourceUrl": "https://help.fundednext.com/en/articles/10701447-is-news-trading-allowed-at-fundednext",
+  "sourceFetchedAt": null,
+  "lastVerified": null,
+  "verifiedBy": null,
+  "needsReverify": true,
+  "investorPasswordAllowed": "unknown",
+  "accountTypes": [
+    {
+      "id": "funded",
+      "label": "Funded (all models, to confirm)",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "profit-reduced",
+        "countedShare": 0.4,
+        "notes": "Secondary sources describe a News Reward Share Rule: 40% of profit from trades in the window counts. Which models this covers, and whether the firm keeps its own event list, is unconfirmed. slTpTriggerCounts assumed true as the restrictive reading."
+      }
+    },
+    {
+      "id": "evaluation",
+      "label": "Evaluation (to confirm)",
+      "phase": "evaluation",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "profit-reduced",
+        "countedShare": 0.4,
+        "notes": "Unconfirmed whether the rule applies in evaluation. Unknown means restricted until verified."
+      }
+    }
+  ],
+  "changelog": [
+    { "packVersion": "2026.09.23-draft.1", "date": "2026-09-23", "change": "Initial draft from third-party summaries. Not read on the firm's page." }
+  ]
+}

@@ -1,0 +1,46 @@
+# Backend
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/.env.backup
+backend/.phpunit.result.cache
+backend/storage/*.key
+backend/storage/app/public/packs/
+backend/storage/logs/*.log
+backend/storage/framework/cache/data/
+backend/storage/framework/sessions/
+backend/storage/framework/testing/
+backend/storage/framework/views/
+backend/database/database.sqlite
+backend/public/storage
+backend/public/hot
+backend/public/build
+
+# PHP package
+packages/rule-engine-php/vendor/
+packages/rule-engine-php/.phpunit.result.cache
+
+# Dart and Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.flutter-plugins
+.flutter-plugins-dependencies
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Pods/
+app/android/.gradle/
+app/android/local.properties
+app/windows/flutter/ephemeral/
+app/macos/Flutter/ephemeral/
+app/ios/Flutter/ephemeral/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db

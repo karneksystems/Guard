@@ -1,0 +1,138 @@
+{
+  "name": "EURUSD reacts to USD and EUR events, ignores GBP",
+  "input": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "EURUSD"
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      },
+      {
+        "id": "ecb",
+        "currency": "EUR",
+        "title": "ECB Rate Decision",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:15:00Z"
+      },
+      {
+        "id": "boe",
+        "currency": "GBP",
+        "title": "BoE Rate Decision",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T11:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "dde487d1ba767a01a083",
+        "instrument": "EURUSD",
+        "opensAtUtc": "2026-10-02T12:10:00Z",
+        "closesAtUtc": "2026-10-02T12:20:00Z",
+        "reasons": [
+          "ecb"
+        ],
+        "verified": true
+      },
+      {
+        "windowId": "81bd398a4014e86b1c2a",
+        "instrument": "EURUSD",
+        "opensAtUtc": "2026-10-02T12:25:00Z",
+        "closesAtUtc": "2026-10-02T12:35:00Z",
+        "reasons": [
+          "nfp"
+        ],
+        "verified": true
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "f514156ea9cb6bc8a40e",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T11:10:00Z"
+      },
+      {
+        "alertId": "dcde6fe7ab204395c513",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T11:25:00Z"
+      },
+      {
+        "alertId": "3967cf6133137d090e41",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T11:55:00Z"
+      },
+      {
+        "alertId": "da3f759c089a1973906c",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T12:05:00Z"
+      },
+      {
+        "alertId": "0c5bf28187f0990289c7",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T12:09:00Z"
+      },
+      {
+        "alertId": "fc8ed2a611cd7fb2af73",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T12:10:00Z"
+      },
+      {
+        "alertId": "ce62041a6188119f044a",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T12:10:00Z"
+      },
+      {
+        "alertId": "a7a8699dc5434bd1cd6e",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T12:20:00Z"
+      },
+      {
+        "alertId": "7dd88a5e6c2f46681f83",
+        "windowId": "dde487d1ba767a01a083",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T12:20:00Z"
+      },
+      {
+        "alertId": "9911d09c85a221caef99",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T12:24:00Z"
+      },
+      {
+        "alertId": "9d42abc80d5848db4923",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T12:25:00Z"
+      },
+      {
+        "alertId": "c3f97735bf20e9aaa64b",
+        "windowId": "81bd398a4014e86b1c2a",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T12:35:00Z"
+      }
+    ],
+    "notes": []
+  }
+}

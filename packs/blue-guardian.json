@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "firmId": "blue-guardian",
+  "firmName": "Blue Guardian",
+  "packVersion": "2026.09.23-draft.1",
+  "sourceUrl": "https://help.blueguardian.com/en/",
+  "sourceFetchedAt": null,
+  "lastVerified": null,
+  "verifiedBy": null,
+  "needsReverify": true,
+  "investorPasswordAllowed": "unknown",
+  "accountTypes": [
+    {
+      "id": "funded",
+      "label": "Funded",
+      "phase": "funded",
+      "newsRule": {
+        "applies": true,
+        "windowBeforeMin": 5,
+        "windowAfterMin": 5,
+        "eventSet": "calendar-high-impact",
+        "eventListUrl": null,
+        "affectedInstruments": "event-currency",
+        "restrictedActions": ["open", "close"],
+        "slTpTriggerCounts": true,
+        "holdingThroughAllowed": true,
+        "consequence": "profit-removed",
+        "notes": "Secondary sources: profits from trades opened or closed in the window are removed at payout, not treated as a violation. Their red-folder set includes FOMC, NFP, CPI, JOLTS, claims and Fed speeches. Replace sourceUrl with the per-model rule page once read."
+      }
+    },
+    { "id": "challenge", "label": "Challenge", "phase": "evaluation", "newsRule": { "applies": false, "notes": "Secondary sources say news trading is allowed in the challenge phase. Confirm." } }
+  ],
+  "changelog": [
+    { "packVersion": "2026.09.23-draft.1", "date": "2026-09-23", "change": "Initial draft from third-party summaries. Not read on the firm's page." }
+  ]
+}

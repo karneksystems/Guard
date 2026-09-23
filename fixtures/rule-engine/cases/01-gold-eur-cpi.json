@@ -1,0 +1,78 @@
+{
+  "name": "EUR CPI at 09:00 CEST while in gold opens a window",
+  "input": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "XAUUSD"
+      }
+    ],
+    "events": [
+      {
+        "id": "cpi-eu",
+        "currency": "EUR",
+        "title": "CPI Flash Estimate y/y",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-01T07:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "c4e1651b97d8b29657be",
+        "instrument": "XAUUSD",
+        "opensAtUtc": "2026-10-01T06:55:00Z",
+        "closesAtUtc": "2026-10-01T07:05:00Z",
+        "reasons": [
+          "cpi-eu"
+        ],
+        "verified": true
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "d172811dc56321702cff",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-01T05:55:00Z"
+      },
+      {
+        "alertId": "c694b548aaec7a5171b1",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-01T06:40:00Z"
+      },
+      {
+        "alertId": "4c3d44403ee405e5221f",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-01T06:50:00Z"
+      },
+      {
+        "alertId": "4b09e9b987a963741107",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-01T06:54:00Z"
+      },
+      {
+        "alertId": "c7845e03954da8031e15",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "open",
+        "fireAtUtc": "2026-10-01T06:55:00Z"
+      },
+      {
+        "alertId": "46aafe41b6c9e380f9e8",
+        "windowId": "c4e1651b97d8b29657be",
+        "kind": "end",
+        "fireAtUtc": "2026-10-01T07:05:00Z"
+      }
+    ],
+    "notes": []
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "name": "Two USD prints five minutes apart on US500 merge into one window",
+  "input": {
+    "userId": "u1",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "instruments": [
+      {
+        "symbol": "US500"
+      }
+    ],
+    "events": [
+      {
+        "id": "claims",
+        "currency": "USD",
+        "title": "Unemployment Claims",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-01T12:30:00Z"
+      },
+      {
+        "id": "gdp",
+        "currency": "USD",
+        "title": "GDP q/q",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-01T12:35:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "1272a649fd8e27b7204c",
+        "instrument": "US500",
+        "opensAtUtc": "2026-10-01T12:25:00Z",
+        "closesAtUtc": "2026-10-01T12:40:00Z",
+        "reasons": [
+          "claims",
+          "gdp"
+        ],
+        "verified": true
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "aca945dc3e010a47903d",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-01T11:25:00Z"
+      },
+      {
+        "alertId": "97d4aa3b96d53ebf1ebe",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-01T12:10:00Z"
+      },
+      {
+        "alertId": "662ab37e27ebae69434b",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-01T12:20:00Z"
+      },
+      {
+        "alertId": "d528dac3e564d1779b6f",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-01T12:24:00Z"
+      },
+      {
+        "alertId": "4f9d7f2c50f20722ded0",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "open",
+        "fireAtUtc": "2026-10-01T12:25:00Z"
+      },
+      {
+        "alertId": "7faf00c489b7f18c6839",
+        "windowId": "1272a649fd8e27b7204c",
+        "kind": "end",
+        "fireAtUtc": "2026-10-01T12:40:00Z"
+      }
+    ],
+    "notes": []
+  }
+}

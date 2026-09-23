@@ -1,0 +1,78 @@
+{
+  "name": "Pro custom window, 3 before and 10 after",
+  "input": {
+    "userId": "u3",
+    "settings": {
+      "mode": "conservative",
+      "windowBeforeMin": 3,
+      "windowAfterMin": 10
+    },
+    "instruments": [
+      {
+        "symbol": "GBPJPY"
+      }
+    ],
+    "events": [
+      {
+        "id": "boj",
+        "currency": "JPY",
+        "title": "BoJ Policy Rate",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-03T03:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "833a3cc3d12cc256bdae",
+        "instrument": "GBPJPY",
+        "opensAtUtc": "2026-10-03T02:57:00Z",
+        "closesAtUtc": "2026-10-03T03:10:00Z",
+        "reasons": [
+          "boj"
+        ],
+        "verified": true
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "4874307af975c3b88e24",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-03T01:57:00Z"
+      },
+      {
+        "alertId": "6c0dfc32f2cfc379fcac",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-03T02:42:00Z"
+      },
+      {
+        "alertId": "5f3c961568d8fc7a165a",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-03T02:52:00Z"
+      },
+      {
+        "alertId": "f2ae0a656f5e7d7e0b42",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-03T02:56:00Z"
+      },
+      {
+        "alertId": "b9c1d582a4244aefe63d",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "open",
+        "fireAtUtc": "2026-10-03T02:57:00Z"
+      },
+      {
+        "alertId": "76cdfd82aa97f9e6ce09",
+        "windowId": "833a3cc3d12cc256bdae",
+        "kind": "end",
+        "fireAtUtc": "2026-10-03T03:10:00Z"
+      }
+    ],
+    "notes": []
+  }
+}
