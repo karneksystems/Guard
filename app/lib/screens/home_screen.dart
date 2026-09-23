@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rule_engine/rule_engine.dart';
 
-import '../data/sample_data.dart';
+import '../state/guard_state.dart';
 import '../theme/tokens.dart';
 
 /// Home, per the brief: today's windows, next event countdown, protection mode,
@@ -12,20 +12,25 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The engine orders by instrument; Home reads in time order.
-    final windows = [...SampleData.windows().windows]
-      ..sort((a, b) => a.opensAtUtc.compareTo(b.opensAtUtc));
+    final state = GuardScope.of(context);
+    final windows = state.windows;
     final next = windows.isEmpty ? null : windows.first;
     final text = Theme.of(context).textTheme;
+    final protection = (state.settings['protection'] as String? ?? 'soft-gate').replaceAll('-', ' ');
+    final mode = state.settings['mode'] == 'firm-match' ? 'Firm match' : 'Conservative';
+    final age = state.syncAge;
+    final syncLine = state.isSample
+        ? 'Sample data · no backend configured'
+        : 'Last sync ${age!.inMinutes < 1 ? 'just now' : '${age.inMinutes} min ago'}';
 
     return ListView(
       padding: const EdgeInsets.all(Tokens.gutter),
       children: [
         Text('Guard', style: text.headlineMedium),
         const SizedBox(height: 4),
-        Text('Soft gate on · Conservative · ${SampleData.instruments.length} instruments', style: text.bodySmall),
+        Text('${_cap(protection)} · $mode · ${state.instruments.length} instruments · $syncLine', style: text.bodySmall),
         const SizedBox(height: Tokens.gutter),
-        _NextWindowCard(window: next),
+        _NextWindowCard(window: next, titleFor: state.titleFor),
         const SizedBox(height: Tokens.gutter),
         Text('Windows ahead', style: text.titleMedium),
         const SizedBox(height: 8),
@@ -33,7 +38,7 @@ class HomeScreen extends StatelessWidget {
           const Text('No restricted windows on your instruments.')
         else
           for (final w in windows) ...[
-            _WindowRow(window: w),
+            _WindowRow(window: w, titleFor: state.titleFor),
             const Divider(height: 1),
           ],
         const SizedBox(height: Tokens.gutter),
@@ -50,9 +55,10 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _NextWindowCard extends StatelessWidget {
-  const _NextWindowCard({required this.window});
+  const _NextWindowCard({required this.window, required this.titleFor});
 
   final Window? window;
+  final String Function(String eventId) titleFor;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +73,7 @@ class _NextWindowCard extends StatelessWidget {
           Text(w == null ? 'Nothing scheduled' : w.instrument, style: text.displayMedium),
           if (w != null) ...[
             const SizedBox(height: 4),
-            Text(w.reasons.map(SampleData.titleFor).join(' · '), style: text.bodyLarge),
+            Text(w.reasons.map(titleFor).join(' · '), style: text.bodyLarge),
             const SizedBox(height: 4),
             Text('${_hhmm(w.opensAtUtc)} to ${_hhmm(w.closesAtUtc)} UTC', style: text.bodySmall),
           ],
@@ -78,9 +84,10 @@ class _NextWindowCard extends StatelessWidget {
 }
 
 class _WindowRow extends StatelessWidget {
-  const _WindowRow({required this.window});
+  const _WindowRow({required this.window, required this.titleFor});
 
   final Window window;
+  final String Function(String eventId) titleFor;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +99,7 @@ class _WindowRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${window.instrument} · ${window.reasons.map(SampleData.titleFor).join(', ')}', style: text.bodyMedium),
+            Text('${window.instrument} · ${window.reasons.map(titleFor).join(', ')}', style: text.bodyMedium),
             Text('${window.opensAtUtc.substring(0, 10)} · ${_hhmm(window.opensAtUtc)} to ${_hhmm(window.closesAtUtc)} UTC', style: text.bodySmall),
           ]),
         ),
@@ -127,3 +134,5 @@ class _StatTile extends StatelessWidget {
 }
 
 String _hhmm(String isoUtc) => isoUtc.substring(11, 16);
+
+String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);

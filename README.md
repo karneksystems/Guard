@@ -59,9 +59,11 @@ workers. In development, `php artisan queue:work --queue=ladder,default`.
 Done: both engines pass the fixtures; backend migrations, calendar sync with a vendor
 adapter (fake vendor, Trading Economics adapter awaiting a key), ladder reconcile with
 delayed jobs, pack publishing, the device API; Flutter shell with the design tokens,
-adaptive layout across the three width classes, and the engine driving Home over
-sample data.
+adaptive layout across the three width classes, the engine driving Home on the
+device, and a sync client with a file-backed local store (register once, sync, fall
+back to the last good payload when the network fails). Build with
+`--dart-define=GUARD_API=https://your-backend` to use a backend; without it the app
+runs on sample data.
 
-Not yet: the app's sync client and local store (Drift), the real push senders
-(M3), the gate modules (M4, M5, M7), fonts bundled, store builds. See
-`docs/MILESTONES.md`.
+Not yet: Drift for the journal and history, the real push senders (M3), the gate
+modules (M4, M5, M7), fonts bundled, store builds. See `docs/MILESTONES.md`.
