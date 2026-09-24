@@ -81,3 +81,16 @@ jobs:
         working-directory: app
       - run: flutter build apk --debug
         working-directory: app
+
+  # Compiles the Win32 watcher and the desktop plugins.
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter build windows --debug
+        working-directory: app

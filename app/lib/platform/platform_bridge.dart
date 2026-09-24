@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -75,6 +77,16 @@ class GateOutcome {
   final DateTime atUtc;
 }
 
+/// The desktop watcher saw a gated app come to the front during a window.
+class GateTrigger {
+  const GateTrigger({required this.windowId, required this.handle});
+
+  final String windowId;
+
+  /// Native window handle of the trading app, opaque to Dart.
+  final int handle;
+}
+
 /// What the app asks of the OS. One implementation per platform behind a method
 /// channel, plus a fake for tests and for platforms where a piece doesn't apply.
 abstract class PlatformBridge {
@@ -83,6 +95,16 @@ abstract class PlatformBridge {
 
   /// Whether this platform can enforce a gate at all (Android and Windows).
   bool get hasGate;
+
+  /// Desktop only: the gate is a Flutter screen, so the native side reports
+  /// triggers and Dart drives the window. Android shows its own activity and
+  /// never emits here.
+  Stream<GateTrigger> get gateTriggers;
+
+  Future<void> raiseGate(int handle);
+  Future<void> lowerGate();
+  Future<void> stayOut(int handle);
+  Future<void> setViewingUntil(DateTime untilUtc);
 
   Future<List<GateableApp>> listApps();
 
@@ -105,12 +127,45 @@ abstract class PlatformBridge {
 /// Android and, later, Windows and macOS. iOS has no gate to grant permissions
 /// for beyond notifications; the Screen Time authorisation is its own flow.
 class MethodChannelBridge implements PlatformBridge {
-  MethodChannelBridge({TargetPlatform? platform}) : _platform = platform ?? defaultTargetPlatform;
+  MethodChannelBridge({TargetPlatform? platform}) : _platform = platform ?? defaultTargetPlatform {
+    _gate.setMethodCallHandler((call) async {
+      if (call.method == 'gateTriggered') {
+        final m = (call.arguments as Map).cast<Object?, Object?>();
+        _triggers.add(GateTrigger(windowId: m['windowId'] as String, handle: (m['handle'] as num).toInt()));
+      }
+      return null;
+    });
+  }
 
   static const _gate = MethodChannel('guard/gate');
   static const _permissions = MethodChannel('guard/permissions');
 
   final TargetPlatform _platform;
+  final _triggers = StreamController<GateTrigger>.broadcast();
+
+  @override
+  Stream<GateTrigger> get gateTriggers => _triggers.stream;
+
+  Future<void> _gateCall(String method, [Map<String, Object?>? args]) async {
+    try {
+      await _gate.invokeMethod<void>(method, args);
+    } on MissingPluginException {
+      // Not on this platform.
+    }
+  }
+
+  @override
+  Future<void> raiseGate(int handle) => _gateCall('raiseGate', {'handle': handle});
+
+  @override
+  Future<void> lowerGate() => _gateCall('lowerGate');
+
+  @override
+  Future<void> stayOut(int handle) => _gateCall('stayOut', {'handle': handle});
+
+  @override
+  Future<void> setViewingUntil(DateTime untilUtc) =>
+      _gateCall('setViewingUntil', {'untilMs': untilUtc.toUtc().millisecondsSinceEpoch});
 
   @override
   Set<GuardPermission> get supportedPermissions => switch (_platform) {
@@ -230,6 +285,31 @@ class FakeBridge implements PlatformBridge {
 
   /// Outcomes the next drainJournal returns.
   final List<GateOutcome> pendingOutcomes = [];
+
+  final _triggers = StreamController<GateTrigger>.broadcast();
+  final List<int> raised = [];
+  int lowered = 0;
+  final List<int> stayedOut = [];
+  DateTime? viewingUntil;
+
+  /// Tests call this to simulate the desktop watcher firing.
+  void trigger(String windowId, {int handle = 4242}) =>
+      _triggers.add(GateTrigger(windowId: windowId, handle: handle));
+
+  @override
+  Stream<GateTrigger> get gateTriggers => _triggers.stream;
+
+  @override
+  Future<void> raiseGate(int handle) async => raised.add(handle);
+
+  @override
+  Future<void> lowerGate() async => lowered++;
+
+  @override
+  Future<void> stayOut(int handle) async => stayedOut.add(handle);
+
+  @override
+  Future<void> setViewingUntil(DateTime untilUtc) async => viewingUntil = untilUtc;
 
   /// Tests call this to simulate the user granting on the OS page.
   void grant(GuardPermission p, [bool value = true]) => _granted[p] = value;

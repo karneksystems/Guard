@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'desktop/desktop_shell.dart';
+import 'gate/desktop_gate.dart';
 import 'notifications/ladder_mirror.dart';
 import 'notifications/notification_scheduler.dart';
 import 'notifications/push_registrar.dart';
@@ -45,15 +47,21 @@ Future<void> main() async {
     // Firebase registration replaces this once the project's config files exist.
     push: FakeRegistrar(),
   );
-  runApp(GuardApp(state: state, controller: controller));
+  final navigatorKey = GlobalKey<NavigatorState>();
+  if (DesktopShell.isDesktop) {
+    await DesktopShell().init(appName: 'Guard', appVersion: kAppVersion);
+    DesktopGate(controller: controller, navigatorKey: navigatorKey).start();
+  }
+  runApp(GuardApp(state: state, controller: controller, navigatorKey: navigatorKey));
   unawaited(controller.start());
 }
 
 class GuardApp extends StatefulWidget {
-  const GuardApp({super.key, this.state, this.controller});
+  const GuardApp({super.key, this.state, this.controller, this.navigatorKey});
 
   final GuardState? state;
   final GuardController? controller;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   State<GuardApp> createState() => _GuardAppState();
@@ -71,6 +79,7 @@ class _GuardAppState extends State<GuardApp> {
       child: GuardScope(
         state: _state,
         child: MaterialApp(
+          navigatorKey: widget.navigatorKey,
           title: 'Guard',
           debugShowCheckedModeBanner: false,
           theme: GuardTheme.light(),

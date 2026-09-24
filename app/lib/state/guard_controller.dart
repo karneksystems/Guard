@@ -87,14 +87,25 @@ class GuardController {
     final outcomes = await bridge.drainJournal();
     if (outcomes.isEmpty) return;
     state.addJournal(outcomes);
+    for (final o in outcomes) {
+      await _postOutcome(o);
+    }
+  }
+
+  /// One outcome recorded right now, by the desktop gate or by the user.
+  Future<void> recordOutcome(String windowId, String outcome, [DateTime? atUtc]) async {
+    final o = GateOutcome(windowId: windowId, outcome: outcome, atUtc: (atUtc ?? DateTime.now()).toUtc());
+    state.addJournal([o]);
+    await _postOutcome(o);
+  }
+
+  Future<void> _postOutcome(GateOutcome o) async {
     final a = api;
     if (a == null || a.token == null) return;
-    for (final o in outcomes) {
-      try {
-        await a.postJournal(windowId: o.windowId, outcome: o.outcome, atUtc: o.atUtc);
-      } on Exception {
-        // Kept in state; the next drain won't repeat it, and that's acceptable for a journal.
-      }
+    try {
+      await a.postJournal(windowId: o.windowId, outcome: o.outcome, atUtc: o.atUtc);
+    } on Exception {
+      // Kept in state; a journal entry that misses the server is acceptable.
     }
   }
 

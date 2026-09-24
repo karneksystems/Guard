@@ -90,5 +90,15 @@ backend without the package name. The Dart side hands the device engine's
 windows to the gate after every payload and settings change. Compiled by the
 android-build CI job; not yet run on a device.
 
-Not yet: Drift for the journal and history, the Windows tray app (M5), the iOS
-shield (M7), fonts bundled, store builds. See `docs/MILESTONES.md`.
+M5, Windows desktop gate: the runner polls the foreground window once a second
+while a window is open (`windows/runner/gate_watcher.cpp`). When a gated process
+(terminal64.exe by default) is in front it tells Dart, which raises the app
+window topmost on that monitor and shows the same gate screen, Stay out
+minimises the trading app, Hold to view lifts the gate for sixty seconds. The
+app lives in the tray, close hides it, and it starts at login, because the gate
+needs the process alive. Rungs schedule as Windows toasts. Compiled by the
+windows-build CI job; not yet run on a Windows machine. macOS gets the tray and
+the notifications but no gate until M7.
+
+Not yet: Drift for the journal and history, the iOS shield (M7), fonts bundled,
+MSIX packaging and signing, store builds. See `docs/MILESTONES.md`.

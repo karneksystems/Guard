@@ -57,8 +57,9 @@ class FakeScheduler implements NotificationScheduler {
   Future<List<int>> pendingIds() async => pending.keys.toList();
 }
 
-/// flutter_local_notifications on Android, iOS and macOS. Windows falls back to
-/// the fake until the tray app's scheduled toasts land with M5.
+/// flutter_local_notifications on Android, iOS, macOS and Windows. Windows
+/// toasts are scheduled through the OS scheduler, so they fire with the app
+/// closed too; the tray app keeps it running anyway for the gate.
 class LocalNotificationScheduler implements NotificationScheduler {
   LocalNotificationScheduler({FlutterLocalNotificationsPlugin? plugin})
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -67,7 +68,11 @@ class LocalNotificationScheduler implements NotificationScheduler {
   bool _ready = false;
 
   static bool get supported =>
-      !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows);
+
+  /// Fixed so Windows can route toast activation back to this app across
+  /// installs. Change it and every user's pending toasts orphan.
+  static const windowsGuid = 'c2f7a1e4-5b8d-4c3a-9e6f-1d2b3c4d5e6f';
 
   @override
   Future<void> initialise() async {
@@ -79,7 +84,14 @@ class LocalNotificationScheduler implements NotificationScheduler {
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    await _plugin.initialize(settings: const InitializationSettings(android: android, iOS: darwin, macOS: darwin));
+    const windows = WindowsInitializationSettings(
+      appName: 'Guard',
+      appUserModelId: 'Stanchion.Guard',
+      guid: windowsGuid,
+    );
+    await _plugin.initialize(
+      settings: const InitializationSettings(android: android, iOS: darwin, macOS: darwin, windows: windows),
+    );
 
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
@@ -128,6 +140,10 @@ class LocalNotificationScheduler implements NotificationScheduler {
         threadIdentifier: n.alertId.substring(0, 7),
       ),
       macOS: const DarwinNotificationDetails(interruptionLevel: InterruptionLevel.timeSensitive),
+      windows: WindowsNotificationDetails(
+        // Alarms stay on screen until dismissed; the rest use the default toast.
+        scenario: urgent ? WindowsNotificationScenario.alarm : null,
+      ),
     );
     await _plugin.zonedSchedule(
       id: n.id,

@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "gate_watcher.h"
 #include "win32_window.h"
 
 // A window that does nothing but host a Flutter view.
@@ -28,6 +29,9 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // The Soft gate's foreground watcher (gate_watcher.h).
+  std::unique_ptr<GateWatcher> gate_watcher_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
