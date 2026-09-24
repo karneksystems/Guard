@@ -24,6 +24,24 @@ return [
     // Where the firm packs live in the monorepo, relative to the backend.
     'packs_source_dir' => env('GUARD_PACKS_DIR', base_path('../packs')),
 
-    // Which push sender to bind: log, apns, fcm (apns and fcm land in M3).
+    // Which push sender to bind: log (development) or live (APNs plus FCM).
     'push_sender' => env('GUARD_PUSH_SENDER', 'log'),
+
+    'apns' => [
+        'team_id' => env('APNS_TEAM_ID'),
+        'key_id' => env('APNS_KEY_ID'),
+        // Either the .p8 contents, or a path to the file.
+        'private_key' => env('APNS_PRIVATE_KEY'),
+        'bundle_id' => env('APNS_BUNDLE_ID', 'com.stanchion.guard'),
+        'sandbox' => (bool) env('APNS_SANDBOX', false),
+    ],
+
+    'fcm' => [
+        // Path to the Firebase service-account JSON.
+        'service_account' => env('FCM_SERVICE_ACCOUNT'),
+    ],
+
+    // How long after fire_at a rung is still worth delivering. After this the
+    // local mirror has fired and a late push would only repeat it.
+    'push_expiry_grace_seconds' => 600,
 ];

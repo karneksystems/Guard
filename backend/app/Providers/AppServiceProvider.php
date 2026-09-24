@@ -10,6 +10,9 @@ use App\Ladder\EngineInputBuilder;
 use App\Ladder\LadderReconciler;
 use App\Listeners\ReconcileLaddersForChangedEvent;
 use App\Packs\PackRepository;
+use App\Push\ApnsSender;
+use App\Push\DeviceRouter;
+use App\Push\FcmSender;
 use App\Push\LogPushSender;
 use App\Push\PushSender;
 use Illuminate\Support\Facades\Event;
@@ -36,7 +39,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PushSender::class, function () {
             return match (config('guard.push_sender')) {
                 'log' => new LogPushSender(),
-                default => throw new RuntimeException('Push sender ' . config('guard.push_sender') . ' lands in M3'),
+                'live' => new DeviceRouter(
+                    self::apns(),
+                    self::fcm(),
+                    (int) config('guard.push_expiry_grace_seconds'),
+                ),
+                default => throw new RuntimeException('Unknown push sender ' . config('guard.push_sender')),
             };
         });
 
@@ -44,6 +52,27 @@ class AppServiceProvider extends ServiceProvider
             $app->make(EngineInputBuilder::class),
             (int) config('guard.ladder_horizon_hours'),
         ));
+    }
+
+    private static function apns(): ?ApnsSender
+    {
+        $c = config('guard.apns');
+        if (empty($c['team_id']) || empty($c['key_id']) || empty($c['private_key'])) {
+            return null;
+        }
+        $pem = is_file($c['private_key']) ? (string) file_get_contents($c['private_key']) : (string) $c['private_key'];
+
+        return new ApnsSender($c['team_id'], $c['key_id'], $pem, $c['bundle_id'], (bool) $c['sandbox']);
+    }
+
+    private static function fcm(): ?FcmSender
+    {
+        $path = config('guard.fcm.service_account');
+        if (empty($path) || !is_file($path)) {
+            return null;
+        }
+
+        return new FcmSender(json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR));
     }
 
     public function boot(): void
