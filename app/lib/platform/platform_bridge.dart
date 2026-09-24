@@ -17,6 +17,7 @@ class GateableApp {
 /// The permissions the gate and the ladder need. Not every platform has every one.
 enum GuardPermission {
   notifications,
+  screenTime,
   usageStats,
   overlay,
   exactAlarm,
@@ -25,6 +26,7 @@ enum GuardPermission {
 
   String get label => switch (this) {
         notifications => 'Notifications',
+        screenTime => 'Screen Time',
         usageStats => 'Usage access',
         overlay => 'Display over other apps',
         exactAlarm => 'Alarms and reminders',
@@ -34,6 +36,7 @@ enum GuardPermission {
 
   String get why => switch (this) {
         notifications => 'The alert ladder is delivered as notifications.',
+        screenTime => 'Lets the guard shield the apps you pick during a window. Apple keeps which apps they are.',
         usageStats => 'Lets the guard notice when MT5 comes to the front during a window.',
         overlay => 'Lets the gate cover MT5 during a window.',
         exactAlarm => 'Starts the guard exactly when a window opens, even if the app is closed.',
@@ -108,6 +111,12 @@ abstract class PlatformBridge {
 
   Future<List<GateableApp>> listApps();
 
+  /// iOS: the OS owns the list. Apple's picker chooses, we hold opaque tokens.
+  bool get usesSystemPicker;
+
+  /// Opens the OS picker. True when the user confirmed a selection.
+  Future<bool> pickApps();
+
   Future<Map<GuardPermission, bool>> permissionStatus();
 
   /// Opens the OS page for the permission. Returns when the user comes back.
@@ -170,7 +179,7 @@ class MethodChannelBridge implements PlatformBridge {
   @override
   Set<GuardPermission> get supportedPermissions => switch (_platform) {
         TargetPlatform.android => GuardPermission.values.toSet(),
-        TargetPlatform.iOS => {GuardPermission.notifications},
+        TargetPlatform.iOS => {GuardPermission.notifications, GuardPermission.screenTime},
         TargetPlatform.windows || TargetPlatform.macOS => {GuardPermission.notifications},
         _ => const {},
       };
@@ -213,7 +222,21 @@ class MethodChannelBridge implements PlatformBridge {
   }
 
   @override
-  bool get hasGate => _platform == TargetPlatform.android || _platform == TargetPlatform.windows;
+  bool get hasGate =>
+      _platform == TargetPlatform.android || _platform == TargetPlatform.windows || _platform == TargetPlatform.iOS;
+
+  @override
+  bool get usesSystemPicker => _platform == TargetPlatform.iOS;
+
+  @override
+  Future<bool> pickApps() async {
+    if (!usesSystemPicker) return false;
+    try {
+      return await _gate.invokeMethod<bool>('pickApps') ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 
   @override
   Future<int> scheduleGateWindows({
@@ -272,6 +295,19 @@ class FakeBridge implements PlatformBridge {
 
   @override
   bool hasGate = true;
+
+  @override
+  bool usesSystemPicker = false;
+
+  /// What pickApps returns, and how often it was asked.
+  bool pickResult = true;
+  int pickCalls = 0;
+
+  @override
+  Future<bool> pickApps() async {
+    pickCalls++;
+    return pickResult;
+  }
 
   final Map<GuardPermission, bool> _granted;
   final List<GateableApp> _apps;

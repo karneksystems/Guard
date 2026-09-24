@@ -85,6 +85,16 @@ Limits: no live countdown on the card, no custom layout, no hold gesture. The
 Family Controls distribution entitlement is needed on the app and all three
 extensions. Development builds work without it.
 
+Two more limits found in the build (D14). DeviceActivity refuses an interval
+under fifteen minutes, so a five-and-five window is monitored from fifteen
+minutes before it closes: the shield can arrive early, never late, and the card
+still names the true window. And an extension can't run a sixty-second timer, so
+"View for 60 seconds" is five usage-threshold events registered with the window
+(60, 120, 180, 240, 300 seconds of use of the gated apps); each one that fires
+re-applies the shield, which gives five views per window. The app's code for all
+of this is in `app/ios/Runner/ScreenTimeGate.swift` and the three folders under
+`app/ios/`; the Xcode target setup is in `app/ios/SCREEN-TIME-SETUP.md`.
+
 ## macOS
 
 Menu-bar agent (LSUIElement), login item via SMAppService. NSWorkspace's

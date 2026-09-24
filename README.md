@@ -123,5 +123,16 @@ verifiers exist (`GUARD_RECEIPT_VERIFIER=fake` for development). Still to do in
 M8: StoreKit, Play Billing and Microsoft Store behind `Billing`, the three
 verifiers, a human reading the five packs' sources, ads.
 
-Not yet: Drift for the journal and history, the iOS shield (M7), fonts bundled,
-MSIX packaging and signing, store builds. See `docs/MILESTONES.md`.
+M7, iOS Screen Time gate, as far as it goes without Apple's answer: the Swift
+is written. `ios/Runner/ScreenTimeGate.swift` handles the same channels as
+Android (authorise, Apple's picker, DeviceActivity schedules for the next
+twenty windows, journal drain), `ios/Shared/GateShared.swift` is the app-group
+store, and the three extensions (monitor, shield card, shield actions) sit in
+their folders with plists and entitlements. The Runner target compiles in the
+ios-build job; the extension targets are added in Xcode once, per
+`ios/SCREEN-TIME-SETUP.md`. Two OS limits are recorded as D14: intervals pad
+to fifteen minutes anchored to the close, and "View for 60 seconds" is a set of
+usage-threshold events. Distribution waits on the entitlement.
+
+Not yet: Drift for the journal and history, fonts bundled, MSIX packaging and
+signing, store builds, the store billing SDKs. See `docs/MILESTONES.md`.

@@ -1,0 +1,52 @@
+name: native
+
+# The desktop and iOS runners cost two and ten times a Linux minute, so these
+# jobs run only when the native side or the plugin set changes, or on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/windows/**'
+      - 'app/ios/**'
+      - 'app/macos/**'
+      - 'app/pubspec.yaml'
+      - 'app/pubspec.lock'
+      - '.github/workflows/native.yml'
+  pull_request:
+    paths:
+      - 'app/windows/**'
+      - 'app/ios/**'
+      - 'app/macos/**'
+      - 'app/pubspec.yaml'
+      - 'app/pubspec.lock'
+      - '.github/workflows/native.yml'
+  workflow_dispatch:
+
+jobs:
+  # Compiles the Win32 watcher and the desktop plugins.
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter build windows --debug
+        working-directory: app
+
+  # Compiles the Runner target, which holds the Screen Time bridge and the
+  # shared store. The three extension targets are added in Xcode
+  # (app/ios/SCREEN-TIME-SETUP.md) and compile there.
+  ios-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter build ios --debug --no-codesign
+        working-directory: app

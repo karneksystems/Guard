@@ -75,6 +75,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final pro = GuardScope.of(context).pro;
+    final c = ControllerScope.of(context);
     final text = Theme.of(context).textTheme;
     final pages = [
       _Step(
@@ -150,6 +151,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         title: 'Which apps to gate?',
         subtitle: 'This stays on your device. We never send it anywhere.',
         child: Column(children: [
+          if (c.bridge.usesSystemPicker) ...[
+            Text('Apple\'s Screen Time picker chooses the apps. We only ever hold a token; not even we learn which apps you picked.', style: text.bodyMedium),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              key: const Key('gate-pick'),
+              onPressed: () async {
+                if (await c.bridge.pickApps()) {
+                  setState(() => _gated
+                    ..clear()
+                    ..add('screen-time'));
+                }
+              },
+              child: Text(_gated.contains('screen-time') ? 'Apps chosen. Change' : 'Choose apps'),
+            ),
+          ] else
           for (final app in _apps)
             CheckboxListTile(
               key: Key('gate-${app.id}'),

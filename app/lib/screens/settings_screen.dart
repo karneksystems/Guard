@@ -81,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
         _Row(
           key: const Key('setting-gated'),
           label: 'Gated apps',
-          value: '${state.gatedAppIds.length} selected',
+          value: c.bridge.usesSystemPicker ? 'Chosen in Screen Time' : '${state.gatedAppIds.length} selected',
           onTap: () => _editGatedApps(context, state, c),
         ),
         _Row(
@@ -260,6 +260,11 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _editGatedApps(BuildContext context, GuardState state, GuardController c) async {
+    if (c.bridge.usesSystemPicker) {
+      final ok = await c.bridge.pickApps();
+      if (ok) await c.setGatedApps(const ['screen-time']);
+      return;
+    }
     final apps = await c.bridge.listApps();
     if (!context.mounted) return;
     final gated = state.gatedAppIds.toSet();
