@@ -115,28 +115,32 @@ class RuleEngine {
     }
 
     final events = (input['events'] as List).cast<Map<String, dynamic>>();
-    late final List<Map<String, dynamic>> selected;
+    final notes = [...rule.notes];
+    // Only a real boolean true is tentative; strings and numbers are not booleans.
+    final live = events.where((e) => e['tentative'] != true).toList();
+    var selected = <Map<String, dynamic>>[];
     if (rule.selector == 'firm-list') {
-      final ids = (input['firmEventIds'] as List).cast<String>().toSet();
-      selected = events
-          .where((e) => ids.contains(e['id']) && e['tentative'] != true)
-          .toList();
-    } else {
-      selected = events
-          .where((e) => e['impact'] == 'high' && e['tentative'] != true)
-          .toList();
+      final ids = (input['firmEventIds'] as List).map((e) => e.toString()).toSet();
+      selected = live.where((e) => ids.contains(e['id'])).toList();
+    }
+    if (rule.selector != 'firm-list' || selected.isEmpty) {
+      // No list, or a list that names nothing we have: unknown means not
+      // allowed, so the calendar's high-impact set applies.
+      if (rule.selector == 'firm-list') notes.add("using the calendar, not the firm's list");
+      selected = live.where((e) => e['impact'] == 'high').toList();
     }
 
     final raw = <_Raw>[];
+    final seenSymbols = <String>{};
     for (final instrument in (input['instruments'] as List).cast<Map<String, dynamic>>()) {
       final basket = basketFor(instrument);
       final symbol = instrument['symbol'] as String;
+      if (!seenSymbols.add(symbol)) continue; // a duplicate instrument must not duplicate reasons
       for (final event in selected) {
         if (rule.affected == 'event-currency' && !basket.contains(event['currency'])) {
           continue;
         }
-        if (rule.affected == 'list' &&
-            !((input['affectedList'] as List?)?.contains(symbol) ?? false)) {
+        if (rule.affected == 'list' && !rule.affectedList.contains(symbol)) {
           continue;
         }
         final t = _parse(event['scheduledAtUtc'] as String);
@@ -149,12 +153,16 @@ class RuleEngine {
       }
     }
 
+    // Event id is the last key so the order is total: Dart's sort is not stable
+    // above 32 items and the other engines must agree on reasons order.
     raw.sort((a, b) {
       final s = a.symbol.compareTo(b.symbol);
       if (s != 0) return s;
       final o = a.opens.compareTo(b.opens);
       if (o != 0) return o;
-      return a.closes.compareTo(b.closes);
+      final c = a.closes.compareTo(b.closes);
+      if (c != 0) return c;
+      return a.eventId.compareTo(b.eventId);
     });
 
     final merged = <_Merged>[];
@@ -172,6 +180,9 @@ class RuleEngine {
     }
 
     final userId = input['userId'] as String;
+    rule.notes
+      ..clear()
+      ..addAll(notes);
     final windows = merged.map((m) {
       final o = _fmt(m.opens);
       final c = _fmt(m.closes);
@@ -241,13 +252,24 @@ class RuleEngine {
     return const ['USD'];
   }
 
+  /// Minutes are whole and never negative; anything else is a bad input, not a
+  /// window of some other size. Both engines reject the same things.
+  static int minutes(Object? v, String field) {
+    if (v is int && v >= 0) return v;
+    if (v is double && v == v.roundToDouble() && v >= 0) return v.toInt();
+    if (v is String && RegExp(r'^\d+$').hasMatch(v)) return int.parse(v);
+    throw FormatException('$field must be a whole number of minutes, got $v');
+  }
+
   _Rule _effectiveRule(Map<String, dynamic> input) {
     final s = input['settings'] as Map<String, dynamic>;
     final notes = <String>[];
+    final userBefore = minutes(s['windowBeforeMin'], 'windowBeforeMin');
+    final userAfter = minutes(s['windowAfterMin'], 'windowAfterMin');
     if (s['mode'] == 'conservative') {
       return _Rule(
-        before: s['windowBeforeMin'] as int,
-        after: s['windowAfterMin'] as int,
+        before: userBefore,
+        after: userAfter,
         selector: 'high',
         affected: 'event-currency',
         verified: true,
@@ -262,19 +284,21 @@ class RuleEngine {
         .firstWhere((a) => a['id'] == input['accountTypeId'],
             orElse: () => throw StateError('Unknown account type ${input['accountTypeId']}'));
     final rule = account['newsRule'] as Map<String, dynamic>;
-    final verified = pack['needsReverify'] != true;
-    if (rule['applies'] != true) {
+    // Unknown means not allowed (RULE-ENGINE.md): a missing field reads as its
+    // most restrictive value. Only a real boolean counts as a boolean.
+    final verified = pack['needsReverify'] == false;
+    if (rule['applies'] == false) {
       return _Rule(
         verified: verified,
         notes: ['firm does not restrict news on this account type'],
       );
     }
 
-    var before = rule['windowBeforeMin'] as int;
-    var after = rule['windowAfterMin'] as int;
+    var before = rule['windowBeforeMin'] == null ? userBefore : minutes(rule['windowBeforeMin'], 'windowBeforeMin');
+    var after = rule['windowAfterMin'] == null ? userAfter : minutes(rule['windowAfterMin'], 'windowAfterMin');
     if (!verified) {
-      before = before > (s['windowBeforeMin'] as int) ? before : s['windowBeforeMin'] as int;
-      after = after > (s['windowAfterMin'] as int) ? after : s['windowAfterMin'] as int;
+      before = before > userBefore ? before : userBefore;
+      after = after > userAfter ? after : userAfter;
       notes.add('pack unverified: using the larger of pack window and user default');
     }
 
@@ -288,11 +312,16 @@ class RuleEngine {
       }
     }
 
+    final affected = rule['affectedInstruments'] as String? ?? 'all';
     return _Rule(
       before: before,
       after: after,
       selector: selector,
-      affected: rule['affectedInstruments'] as String,
+      affected: affected,
+      affectedList: {
+        ...((rule['instruments'] as List?) ?? const []).map((e) => e.toString()),
+        ...((input['affectedList'] as List?) ?? const []).map((e) => e.toString()),
+      },
       verified: verified,
       notes: notes,
     );
@@ -305,6 +334,7 @@ class _Rule {
     this.after,
     this.selector,
     this.affected,
+    this.affectedList = const {},
     required this.verified,
     required this.notes,
   });
@@ -313,6 +343,7 @@ class _Rule {
   final int? after;
   final String? selector;
   final String? affected;
+  final Set<String> affectedList;
   final bool verified;
   final List<String> notes;
 }
@@ -335,12 +366,16 @@ class _Merged {
   final List<String> reasons;
 }
 
+final _tsPattern = RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$');
+
+/// Exactly YYYY-MM-DDTHH:MM:SSZ, like the PHP engine: an offset, a fraction or
+/// a missing seconds field would parse here and be refused there, and the ids
+/// hashed from them must be identical.
 DateTime _parse(String ts) {
-  final dt = DateTime.parse(ts);
-  if (!dt.isUtc) {
-    throw FormatException('Timestamps must be UTC with a trailing Z', ts);
+  if (!_tsPattern.hasMatch(ts)) {
+    throw FormatException('Timestamps must be YYYY-MM-DDTHH:MM:SSZ', ts);
   }
-  return dt;
+  return DateTime.parse(ts);
 }
 
 String _two(int n) => n.toString().padLeft(2, '0');

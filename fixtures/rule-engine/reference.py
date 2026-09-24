@@ -58,57 +58,88 @@ def load_pack(inp: dict) -> dict | None:
     return None
 
 
+def minutes(v, field: str) -> int:
+    """Whole, non-negative minutes; anything else is a bad input, not a window of some other size."""
+    if isinstance(v, bool):
+        raise ValueError(f"{field} must be a whole number of minutes, got {v!r}")
+    if isinstance(v, int) and v >= 0:
+        return v
+    if isinstance(v, float) and v.is_integer() and v >= 0:
+        return int(v)
+    if isinstance(v, str) and v.isdigit():
+        return int(v)
+    raise ValueError(f"{field} must be a whole number of minutes, got {v!r}")
+
+
 def effective_rule(inp: dict):
-    """Return (before, after, event_selector, affected, verified, notes) for this user."""
+    """Return (before, after, event_selector, affected, verified, notes, affected_list) for this user.
+
+    Unknown means not allowed: a missing pack field reads as its most restrictive value,
+    and only a real boolean counts as a boolean.
+    """
     s = inp["settings"]
     notes = []
+    user_before = minutes(s.get("windowBeforeMin"), "windowBeforeMin")
+    user_after = minutes(s.get("windowAfterMin"), "windowAfterMin")
     if s["mode"] == "conservative":
-        return s["windowBeforeMin"], s["windowAfterMin"], "high", "event-currency", True, notes
+        return user_before, user_after, "high", "event-currency", True, notes, []
 
     pack = load_pack(inp)
     acct = next(a for a in pack["accountTypes"] if a["id"] == inp["accountTypeId"])
     rule = acct["newsRule"]
-    if not rule["applies"]:
-        return None, None, None, None, not pack["needsReverify"], ["firm does not restrict news on this account type"]
+    verified = pack.get("needsReverify") is False
+    if rule.get("applies") is False:
+        return None, None, None, None, verified, ["firm does not restrict news on this account type"], []
 
-    before, after = rule["windowBeforeMin"], rule["windowAfterMin"]
-    verified = not pack["needsReverify"]
+    before = minutes(rule["windowBeforeMin"], "windowBeforeMin") if rule.get("windowBeforeMin") is not None else user_before
+    after = minutes(rule["windowAfterMin"], "windowAfterMin") if rule.get("windowAfterMin") is not None else user_after
     if not verified:
-        before, after = max(before, s["windowBeforeMin"]), max(after, s["windowAfterMin"])
+        before, after = max(before, user_before), max(after, user_after)
         notes.append("pack unverified: using the larger of pack window and user default")
 
     selector = "high"
-    if rule["eventSet"] == "firm-list":
+    if rule.get("eventSet", "calendar-high-impact") == "firm-list":
         if inp.get("firmEventIds"):
             selector = "firm-list"
         else:
             notes.append("using the calendar, not the firm's list")
-    return before, after, selector, rule["affectedInstruments"], verified, notes
+    affected_list = sorted({str(x) for x in list(rule.get("instruments") or []) + list(inp.get("affectedList") or [])})
+    return before, after, selector, rule.get("affectedInstruments", "all"), verified, notes, affected_list
 
 
 def compute_windows(inp: dict) -> tuple[list[dict], list[str]]:
-    before, after, selector, affected, verified, notes = effective_rule(inp)
+    before, after, selector, affected, verified, notes, affected_list = effective_rule(inp)
     if before is None:
         return [], notes
+    notes = list(notes)
 
+    live = [e for e in inp["events"] if e.get("tentative") is not True]   # only a real True is tentative
+    events = []
     if selector == "firm-list":
-        ids = set(inp["firmEventIds"])
-        events = [e for e in inp["events"] if e["id"] in ids and not e.get("tentative")]
-    else:
-        events = [e for e in inp["events"] if e["impact"] == "high" and not e.get("tentative")]
+        ids = {str(i) for i in inp["firmEventIds"]}
+        events = [e for e in live if str(e["id"]) in ids]
+    if selector != "firm-list" or not events:
+        # No list, or a list naming nothing we have: unknown means not allowed, the calendar applies.
+        if selector == "firm-list":
+            notes.append("using the calendar, not the firm's list")
+        events = [e for e in live if e["impact"] == "high"]
 
     raw = []
+    seen = set()
     for inst in inp["instruments"]:
+        if inst["symbol"] in seen:                 # a duplicate instrument must not duplicate reasons
+            continue
+        seen.add(inst["symbol"])
         basket = basket_for(inst)
         for e in events:
             if affected == "event-currency" and e["currency"] not in basket:
                 continue
-            if affected == "list" and inst["symbol"] not in inp.get("affectedList", []):
+            if affected == "list" and inst["symbol"] not in affected_list:
                 continue
             t = parse(e["scheduledAtUtc"])
             raw.append((inst["symbol"], t - timedelta(minutes=before), t + timedelta(minutes=after), e["id"]))
 
-    raw.sort(key=lambda r: (r[0], r[1], r[2]))
+    raw.sort(key=lambda r: (r[0], r[1], r[2], str(r[3])))   # event id last: a total order every engine shares
     merged: list[list] = []
     for sym, o, c, eid in raw:
         if merged and merged[-1][0] == sym and o <= merged[-1][2]:

@@ -1,0 +1,176 @@
+{
+  "name": "Sparse rule: missing fields read as their most restrictive values (applies, user window, all instruments, unverified)",
+  "input": {
+    "userId": "u12",
+    "settings": {
+      "mode": "firm-match",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "pack": {
+      "schemaVersion": 1,
+      "firmId": "sparse",
+      "firmName": "Sparse",
+      "packVersion": "2026.09.30",
+      "sourceUrl": "https://ftmo.com/en/faq/can-i-trade-news/",
+      "sourceFetchedAt": "2026-09-30T10:00:00Z",
+      "lastVerified": "2026-09-30",
+      "verifiedBy": "jamie",
+      "investorPasswordAllowed": "unknown",
+      "accountTypes": [
+        {
+          "id": "funded",
+          "label": "Funded",
+          "phase": "funded",
+          "newsRule": {
+            "restrictedActions": [
+              "open"
+            ]
+          }
+        }
+      ],
+      "changelog": [
+        {
+          "packVersion": "2026.09.23-draft.1",
+          "date": "2026-09-23",
+          "change": "Initial draft from third-party summaries. Not read on the firm's page."
+        }
+      ]
+    },
+    "accountTypeId": "funded",
+    "instruments": [
+      {
+        "symbol": "DE40",
+        "basket": [
+          "EUR"
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      },
+      {
+        "id": "tent",
+        "currency": "EUR",
+        "title": "Tentative",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T14:00:00Z",
+        "tentative": true
+      },
+      {
+        "id": "str",
+        "currency": "EUR",
+        "title": "String tentative is not tentative",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T16:00:00Z",
+        "tentative": "true"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "52186515dbdf4cd4d11b",
+        "instrument": "DE40",
+        "opensAtUtc": "2026-10-02T12:25:00Z",
+        "closesAtUtc": "2026-10-02T12:35:00Z",
+        "reasons": [
+          "nfp"
+        ],
+        "verified": false
+      },
+      {
+        "windowId": "6f9d9a2ac18140872f99",
+        "instrument": "DE40",
+        "opensAtUtc": "2026-10-02T15:55:00Z",
+        "closesAtUtc": "2026-10-02T16:05:00Z",
+        "reasons": [
+          "str"
+        ],
+        "verified": false
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "b11d294b0d67285be21e",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T11:25:00Z"
+      },
+      {
+        "alertId": "a24235e5f2c3cc140763",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T12:10:00Z"
+      },
+      {
+        "alertId": "487a066842bf3c85701b",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T12:20:00Z"
+      },
+      {
+        "alertId": "5f48755c0ad3ca9a259f",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T12:24:00Z"
+      },
+      {
+        "alertId": "5b93587cac33262a3a83",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T12:25:00Z"
+      },
+      {
+        "alertId": "5f458378dffbe5a15626",
+        "windowId": "52186515dbdf4cd4d11b",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T12:35:00Z"
+      },
+      {
+        "alertId": "f00ccc81c14753c1e409",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T14:55:00Z"
+      },
+      {
+        "alertId": "cf8cc10ccb811891a109",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T15:40:00Z"
+      },
+      {
+        "alertId": "7d8105ff45e25271f46a",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T15:50:00Z"
+      },
+      {
+        "alertId": "a5932f077fccb62af7b2",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T15:54:00Z"
+      },
+      {
+        "alertId": "6ed6d0ca897144dcff26",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T15:55:00Z"
+      },
+      {
+        "alertId": "127e304dd6360ddc505d",
+        "windowId": "6f9d9a2ac18140872f99",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T16:05:00Z"
+      }
+    ],
+    "notes": [
+      "pack unverified: using the larger of pack window and user default"
+    ]
+  }
+}

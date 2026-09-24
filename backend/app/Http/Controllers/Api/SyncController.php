@@ -41,6 +41,7 @@ final class SyncController extends Controller
             'pro' => $user->isPro(),
             'proUntil' => $user->pro_until?->utc()->format('Y-m-d\TH:i:s\Z'),
             'settings' => EngineInputBuilder::clampSettings($user),
+            'firmEventIds' => app(EngineInputBuilder::class)->firmEventIds($user, $now->sub(new DateInterval('PT2H')), $eventsTo),
             'instruments' => $user->instruments->map(fn (Instrument $i) => ['symbol' => $i->symbol, 'basket' => $i->basket_currencies])->values(),
             'events' => CalendarEvent::query()
                 ->whereBetween('scheduled_at_utc', [$now->sub(new DateInterval('PT2H')), $eventsTo])

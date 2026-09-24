@@ -95,6 +95,29 @@ final class EngineInputBuilder
         return $input;
     }
 
+    /**
+     * The firm's matched event ids for the horizon, as the device needs them so
+     * its windows (and their ids) come out the same as the server's.
+     *
+     * @return list<string>
+     */
+    public function firmEventIds(User $user, DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $firmId = $user->settings?->firm_id;
+        if ($firmId === null) {
+            return [];
+        }
+
+        return FirmListEvent::query()
+            ->where('firm_id', $firmId)
+            ->whereNotNull('calendar_event_id')
+            ->whereBetween('scheduled_at_utc', [$from, $to])
+            ->pluck('calendar_event_id')
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
     public function packLoader(): callable
     {
         return fn (string $firmId): array => $this->packs->load($firmId);

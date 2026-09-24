@@ -19,7 +19,7 @@ packages/rule_engine    The rule engine in Dart (used by the app)
 packages/rule-engine-php  The same engine in PHP (used by the backend)
 packs/                  Firm rule packs, JSON, one per firm, all unverified until a human reads the source
 schema/                 Pack JSON Schema and the validator CI runs
-fixtures/rule-engine/   Ten shared cases both engines must pass, plus the Python reference that generated them
+fixtures/rule-engine/   Thirteen shared cases both engines must pass, plus the Python reference that generated them
 docs/                   Brief, architecture, specs, decisions
 ```
 

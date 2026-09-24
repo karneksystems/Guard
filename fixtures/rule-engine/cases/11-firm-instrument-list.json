@@ -1,0 +1,188 @@
+{
+  "name": "Pack restricts a named list of instruments: US500 gets the window, gold does not, whatever the currency",
+  "input": {
+    "userId": "u11",
+    "settings": {
+      "mode": "firm-match",
+      "windowBeforeMin": 5,
+      "windowAfterMin": 5
+    },
+    "pack": {
+      "schemaVersion": 1,
+      "firmId": "listfirm",
+      "firmName": "List Firm",
+      "packVersion": "2026.09.30",
+      "sourceUrl": "https://ftmo.com/en/faq/can-i-trade-news/",
+      "sourceFetchedAt": "2026-09-30T10:00:00Z",
+      "lastVerified": "2026-09-30",
+      "verifiedBy": "jamie",
+      "needsReverify": false,
+      "investorPasswordAllowed": "unknown",
+      "accountTypes": [
+        {
+          "id": "funded",
+          "label": "Funded",
+          "phase": "funded",
+          "newsRule": {
+            "applies": true,
+            "windowBeforeMin": 3,
+            "windowAfterMin": 3,
+            "eventSet": "calendar-high-impact",
+            "eventListUrl": null,
+            "affectedInstruments": "list",
+            "instruments": [
+              "US500",
+              "USTEC"
+            ],
+            "restrictedActions": [
+              "open",
+              "close"
+            ],
+            "slTpTriggerCounts": true,
+            "holdingThroughAllowed": true,
+            "consequence": "breach"
+          }
+        }
+      ],
+      "changelog": [
+        {
+          "packVersion": "2026.09.23-draft.1",
+          "date": "2026-09-23",
+          "change": "Initial draft from third-party summaries. Not read on the firm's page."
+        }
+      ]
+    },
+    "accountTypeId": "funded",
+    "instruments": [
+      {
+        "symbol": "XAUUSD",
+        "basket": [
+          "USD",
+          "EUR",
+          "GBP"
+        ]
+      },
+      {
+        "symbol": "US500",
+        "basket": [
+          "USD"
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "nfp",
+        "currency": "USD",
+        "title": "Non-Farm Payrolls",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-02T12:30:00Z"
+      },
+      {
+        "id": "cpi",
+        "currency": "EUR",
+        "title": "CPI",
+        "impact": "high",
+        "scheduledAtUtc": "2026-10-01T09:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "windows": [
+      {
+        "windowId": "d4ee1e43c2541e0548f6",
+        "instrument": "US500",
+        "opensAtUtc": "2026-10-01T08:57:00Z",
+        "closesAtUtc": "2026-10-01T09:03:00Z",
+        "reasons": [
+          "cpi"
+        ],
+        "verified": true
+      },
+      {
+        "windowId": "12a2c9c0ad135e0675c8",
+        "instrument": "US500",
+        "opensAtUtc": "2026-10-02T12:27:00Z",
+        "closesAtUtc": "2026-10-02T12:33:00Z",
+        "reasons": [
+          "nfp"
+        ],
+        "verified": true
+      }
+    ],
+    "ladder": [
+      {
+        "alertId": "cd47b27fc88d7ac92ac6",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-01T07:57:00Z"
+      },
+      {
+        "alertId": "39300649d8c45f1db433",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-01T08:42:00Z"
+      },
+      {
+        "alertId": "75649c8f4cd3415e19c5",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-01T08:52:00Z"
+      },
+      {
+        "alertId": "5b003131720cf3e24c0c",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-01T08:56:00Z"
+      },
+      {
+        "alertId": "e81f9b9235da6bdb62b0",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "open",
+        "fireAtUtc": "2026-10-01T08:57:00Z"
+      },
+      {
+        "alertId": "1b423123aa91f2937d34",
+        "windowId": "d4ee1e43c2541e0548f6",
+        "kind": "end",
+        "fireAtUtc": "2026-10-01T09:03:00Z"
+      },
+      {
+        "alertId": "e44c059d416692d4da31",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "t-60",
+        "fireAtUtc": "2026-10-02T11:27:00Z"
+      },
+      {
+        "alertId": "399dff2b9edf13158b4c",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "t-15",
+        "fireAtUtc": "2026-10-02T12:12:00Z"
+      },
+      {
+        "alertId": "055f2284aa55a2d2b6c0",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "t-5",
+        "fireAtUtc": "2026-10-02T12:22:00Z"
+      },
+      {
+        "alertId": "e1a71a42672ff781f971",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "t-1",
+        "fireAtUtc": "2026-10-02T12:26:00Z"
+      },
+      {
+        "alertId": "350d42e7e487b1155f18",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "open",
+        "fireAtUtc": "2026-10-02T12:27:00Z"
+      },
+      {
+        "alertId": "1fa0ce72020736dc3705",
+        "windowId": "12a2c9c0ad135e0675c8",
+        "kind": "end",
+        "fireAtUtc": "2026-10-02T12:33:00Z"
+      }
+    ],
+    "notes": []
+  }
+}

@@ -12,6 +12,7 @@ class SyncPayload {
     required this.events,
     required this.windows,
     required this.ladder,
+    this.firmEventIds = const [],
     required this.fetchedAtUtc,
   });
 
@@ -37,6 +38,7 @@ class SyncPayload {
       events: (json['events'] as List? ?? const []).cast<Map<String, dynamic>>(),
       windows: (json['windows'] as List? ?? const []).cast<Map<String, dynamic>>(),
       ladder: (json['ladder'] as List? ?? const []).cast<Map<String, dynamic>>(),
+      firmEventIds: (json['firmEventIds'] as List? ?? const []).map((e) => e.toString()).toList(),
       fetchedAtUtc: (fetchedAt ?? DateTime.now()).toUtc(),
     );
   }
@@ -57,6 +59,10 @@ class SyncPayload {
   final List<Map<String, dynamic>> events;
   final List<Map<String, dynamic>> windows;
   final List<Map<String, dynamic>> ladder;
+
+  /// The firm's own restricted-event ids, matched server-side, so Firm match
+  /// on the device selects the same events as the server.
+  final List<String> firmEventIds;
   final DateTime fetchedAtUtc;
 
   /// The engine's input, built from this payload for the given user id.
@@ -72,6 +78,7 @@ class SyncPayload {
         if (settings['mode'] == 'firm-match' && settings['firmId'] != null) ...{
           'packId': settings['firmId'],
           'accountTypeId': settings['accountTypeId'],
+          if (firmEventIds.isNotEmpty) 'firmEventIds': firmEventIds,
         },
       };
 
@@ -95,6 +102,7 @@ class SyncPayload {
         'events': events,
         'windows': windows,
         'ladder': ladder,
+        'firmEventIds': firmEventIds,
         'fetchedAtUtc': fetchedAtUtc.toIso8601String(),
       };
 

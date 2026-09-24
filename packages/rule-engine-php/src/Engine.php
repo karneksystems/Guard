@@ -46,32 +46,40 @@ final class Engine
      */
     public function computeWindows(array $input): array
     {
-        [$before, $after, $selector, $affected, $verified, $notes] = $this->effectiveRule($input);
+        [$before, $after, $selector, $affected, $verified, $notes, $affectedList] = $this->effectiveRule($input);
         if ($before === null) {
             return ['windows' => [], 'notes' => $notes];
         }
 
+        // Only a real boolean true is tentative; strings and numbers are not booleans.
+        $live = array_values(array_filter($input['events'], static fn (array $e): bool => ($e['tentative'] ?? null) !== true));
+        $events = [];
         if ($selector === 'firm-list') {
-            $ids = array_flip($input['firmEventIds']);
-            $events = array_values(array_filter(
-                $input['events'],
-                static fn (array $e): bool => isset($ids[$e['id']]) && empty($e['tentative']),
-            ));
-        } else {
-            $events = array_values(array_filter(
-                $input['events'],
-                static fn (array $e): bool => $e['impact'] === 'high' && empty($e['tentative']),
-            ));
+            $ids = array_flip(array_map('strval', $input['firmEventIds']));
+            $events = array_values(array_filter($live, static fn (array $e): bool => isset($ids[(string) $e['id']])));
+        }
+        if ($selector !== 'firm-list' || $events === []) {
+            // No list, or a list that names nothing we have: unknown means not
+            // allowed, so the calendar's high-impact set applies.
+            if ($selector === 'firm-list') {
+                $notes[] = "using the calendar, not the firm's list";
+            }
+            $events = array_values(array_filter($live, static fn (array $e): bool => $e['impact'] === 'high'));
         }
 
         $raw = [];
+        $seen = [];
         foreach ($input['instruments'] as $instrument) {
+            if (isset($seen[$instrument['symbol']])) {
+                continue; // a duplicate instrument must not duplicate reasons
+            }
+            $seen[$instrument['symbol']] = true;
             $basket = self::basketFor($instrument);
             foreach ($events as $event) {
                 if ($affected === 'event-currency' && !in_array($event['currency'], $basket, true)) {
                     continue;
                 }
-                if ($affected === 'list' && !in_array($instrument['symbol'], $input['affectedList'] ?? [], true)) {
+                if ($affected === 'list' && !in_array($instrument['symbol'], $affectedList, true)) {
                     continue;
                 }
                 $t = self::parse($event['scheduledAtUtc']);
@@ -84,7 +92,10 @@ final class Engine
             }
         }
 
-        usort($raw, static fn (array $a, array $b): int => [$a[0], $a[1], $a[2]] <=> [$b[0], $b[1], $b[2]]);
+        // Event id last so the order is total and byte-wise, same as the Dart engine.
+        usort($raw, static function (array $a, array $b): int {
+            return strcmp($a[0], $b[0]) ?: ($a[1] <=> $b[1]) ?: ($a[2] <=> $b[2]) ?: strcmp((string) $a[3], (string) $b[3]);
+        });
 
         $merged = [];
         foreach ($raw as [$symbol, $opens, $closes, $eventId]) {
@@ -141,8 +152,9 @@ final class Engine
                 'fireAtUtc' => $w['closesAtUtc'],
             ];
         }
+        // strcmp, not <=>: a numeric-looking sha1 prefix must not compare as a number.
         usort($ladder, static fn (array $a, array $b): int =>
-            [$a['fireAtUtc'], $a['windowId'], $a['kind']] <=> [$b['fireAtUtc'], $b['windowId'], $b['kind']]);
+            strcmp($a['fireAtUtc'], $b['fireAtUtc']) ?: strcmp($a['windowId'], $b['windowId']) ?: strcmp($a['kind'], $b['kind']));
 
         return $ladder;
     }
@@ -159,9 +171,9 @@ final class Engine
         $cancelled = array_values(array_diff($b, $a));
         $created = array_values(array_diff($a, $b));
         $kept = array_values(array_intersect($b, $a));
-        sort($cancelled);
-        sort($created);
-        sort($kept);
+        sort($cancelled, SORT_STRING);
+        sort($created, SORT_STRING);
+        sort($kept, SORT_STRING);
 
         return ['cancelledAlertIds' => $cancelled, 'createdAlertIds' => $created, 'keptAlertIds' => $kept];
     }
@@ -183,13 +195,33 @@ final class Engine
         return ['USD'];
     }
 
-    /** @return array{0: ?int, 1: ?int, 2: ?string, 3: ?string, 4: bool, 5: list<string>} */
+    /**
+     * Minutes are whole and never negative; anything else is a bad input, not a
+     * window of some other size. Both engines reject the same things.
+     */
+    public static function minutes(mixed $v, string $field): int
+    {
+        if (is_int($v) && $v >= 0) {
+            return $v;
+        }
+        if (is_float($v) && floor($v) === $v && $v >= 0) {
+            return (int) $v;
+        }
+        if (is_string($v) && preg_match('/^\d+$/', $v)) {
+            return (int) $v;
+        }
+        throw new RuntimeException("$field must be a whole number of minutes, got " . var_export($v, true));
+    }
+
+    /** @return array{0: ?int, 1: ?int, 2: ?string, 3: ?string, 4: bool, 5: list<string>, 6: list<string>} */
     private function effectiveRule(array $input): array
     {
         $s = $input['settings'];
         $notes = [];
+        $userBefore = self::minutes($s['windowBeforeMin'] ?? null, 'windowBeforeMin');
+        $userAfter = self::minutes($s['windowAfterMin'] ?? null, 'windowAfterMin');
         if ($s['mode'] === 'conservative') {
-            return [$s['windowBeforeMin'], $s['windowAfterMin'], 'high', 'event-currency', true, $notes];
+            return [$userBefore, $userAfter, 'high', 'event-currency', true, $notes, []];
         }
 
         $pack = $input['pack'] ?? ($this->packLoader)($input['packId']);
@@ -204,21 +236,23 @@ final class Engine
             throw new RuntimeException('Unknown account type ' . $input['accountTypeId']);
         }
         $rule = $account['newsRule'];
-        $verified = !$pack['needsReverify'];
-        if (!$rule['applies']) {
-            return [null, null, null, null, $verified, ['firm does not restrict news on this account type']];
+        // Unknown means not allowed (RULE-ENGINE.md): a missing field reads as its
+        // most restrictive value. Only a real boolean counts as a boolean.
+        $verified = ($pack['needsReverify'] ?? null) === false;
+        if (($rule['applies'] ?? null) === false) {
+            return [null, null, null, null, $verified, ['firm does not restrict news on this account type'], []];
         }
 
-        $before = $rule['windowBeforeMin'];
-        $after = $rule['windowAfterMin'];
+        $before = isset($rule['windowBeforeMin']) ? self::minutes($rule['windowBeforeMin'], 'windowBeforeMin') : $userBefore;
+        $after = isset($rule['windowAfterMin']) ? self::minutes($rule['windowAfterMin'], 'windowAfterMin') : $userAfter;
         if (!$verified) {
-            $before = max($before, $s['windowBeforeMin']);
-            $after = max($after, $s['windowAfterMin']);
+            $before = max($before, $userBefore);
+            $after = max($after, $userAfter);
             $notes[] = 'pack unverified: using the larger of pack window and user default';
         }
 
         $selector = 'high';
-        if ($rule['eventSet'] === 'firm-list') {
+        if (($rule['eventSet'] ?? 'calendar-high-impact') === 'firm-list') {
             if (!empty($input['firmEventIds'])) {
                 $selector = 'firm-list';
             } else {
@@ -226,7 +260,12 @@ final class Engine
             }
         }
 
-        return [$before, $after, $selector, $rule['affectedInstruments'], $verified, $notes];
+        $affectedList = array_values(array_unique(array_map('strval', array_merge(
+            $rule['instruments'] ?? [],
+            $input['affectedList'] ?? [],
+        ))));
+
+        return [$before, $after, $selector, $rule['affectedInstruments'] ?? 'all', $verified, $notes, $affectedList];
     }
 
     private static function parse(string $ts): DateTimeImmutable

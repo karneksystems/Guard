@@ -64,7 +64,7 @@ final class FixturesTest extends TestCase
             self::assertArrayHasKey('expected', $case, basename($path) . ' has no expected block; run reference.py --write');
             $count++;
         }
-        self::assertSame(10, $count, 'expected ten fixture cases');
+        self::assertSame(13, $count, 'expected thirteen fixture cases');
     }
 
     /** Sort associative keys recursively so key order never causes a false mismatch. */

@@ -21,8 +21,8 @@ void main() {
       .toList()
     ..sort((a, b) => a.path.compareTo(b.path));
 
-  test('there are ten fixture cases', () {
-    expect(files.length, 10);
+  test('there are thirteen fixture cases', () {
+    expect(files.length, 13);
   });
 
   for (final file in files) {

@@ -52,7 +52,15 @@ calendar, not the firm's list".
 Unknown means not allowed. A pack with needsReverify true shows an "unverified"
 badge, the engine uses the larger of the pack window and the user's default, and
 nothing that depends on investorPasswordAllowed unlocks. A missing field is read as
-its most restrictive value.
+its most restrictive value, and the engines implement exactly this: applies missing
+means it applies, minutes missing means the user's default, eventSet missing means
+the calendar, affectedInstruments missing means all, needsReverify missing means
+unverified. Only a real boolean counts as a boolean; "true" as a string is not
+tentative and not verified. Minutes must be whole and never negative, timestamps
+exactly YYYY-MM-DDTHH:MM:SSZ; anything else is refused by both engines rather
+than read two different ways. A firm list that names nothing in the calendar falls
+back to the calendar with the note. affectedInstruments "list" reads the rule's
+own instruments array.
 
 ## Outputs
 
