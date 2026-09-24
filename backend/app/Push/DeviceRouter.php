@@ -59,4 +59,29 @@ final class DeviceRouter implements PushSender
 
         return $firstId;
     }
+
+    public function sendResync(int $userId): void
+    {
+        $devices = Device::query()
+            ->where('user_id', $userId)
+            ->where('token_valid', true)
+            ->whereNotNull('push_token')
+            ->get();
+        $data = ['type' => 'resync'];
+        foreach ($devices as $device) {
+            try {
+                match ($device->platform) {
+                    'ios', 'macos' => $this->apns?->sendSilent($device->push_token, $data),
+                    'android' => $this->fcm?->sendSilent($device->push_token, $data),
+                    default => null,
+                };
+            } catch (PushRejected $e) {
+                if ($e->prune) {
+                    $device->forceFill(['token_valid' => false, 'notif_state' => 'invalid'])->save();
+                }
+                // Transient: the next sync or resume catches up; a nudge is never retried.
+                Log::info('resync nudge failed', ['device' => $device->id, 'reason' => $e->getMessage()]);
+            }
+        }
+    }
 }

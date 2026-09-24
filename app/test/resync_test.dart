@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:guard_app/main.dart';
 import 'package:guard_app/notifications/ladder_mirror.dart';
 import 'package:guard_app/notifications/notification_scheduler.dart';
+import 'package:guard_app/notifications/push_registrar.dart';
 import 'package:guard_app/platform/platform_bridge.dart';
 import 'package:guard_app/state/guard_controller.dart';
 import 'package:guard_app/state/guard_state.dart';
@@ -47,6 +48,8 @@ class Server {
       });
 }
 
+final registrar = FakeRegistrar();
+
 (GuardController, FakeScheduler, Server) build({DateTime Function()? now}) {
   final server = Server();
   final api = ApiClient(baseUrl: 'https://guard.test', client: server.client);
@@ -59,6 +62,7 @@ class Server {
     store: store,
     sync: SyncService(api: api, store: store, platform: 'windows', tz: 'UTC', appVersion: '0'),
     mirror: LadderMirror(scheduler),
+    push: registrar,
     now: now ?? () => DateTime.utc(2026, 10, 2, 6),
   );
   return (c, scheduler, server);
@@ -78,6 +82,16 @@ void main() {
     server.down = true;
     expect(await c.resync(), isFalse);
     expect(scheduler.pending[id]!.atUtc, DateTime.utc(2026, 10, 2, 12, 40, 20), reason: 'cache stands');
+  });
+
+  test('a silent resync push pulls the new ladder', () async {
+    final (c, scheduler, server) = build();
+    await c.start();
+    server.opens = '2026-10-02T12:50:00Z';
+    registrar.deliver({'type': 'resync'});
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(scheduler.pending[notificationIdFor('a5'.padRight(20, '0'))]!.atUtc, DateTime.utc(2026, 10, 2, 12, 50, 20));
+    c.dispose();
   });
 
   test('resumed only resyncs when the last sync is stale', () async {

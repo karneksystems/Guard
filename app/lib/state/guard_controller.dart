@@ -341,6 +341,11 @@ class GuardController {
   }
 
   void _onPush(Map<String, dynamic> data) {
+    if (data['type'] == 'resync') {
+      // The ladder changed server-side: pull it so the mirror and gate follow.
+      unawaited(resync());
+      return;
+    }
     final alertId = data['alertId'] as String?;
     if (alertId != null) {
       unawaited(mirror?.pushArrived(alertId) ?? Future.value());

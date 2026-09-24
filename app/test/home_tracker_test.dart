@@ -142,6 +142,21 @@ void main() {
     expect(find.byKey(const Key('digest-count')), findsOneWidget);
   });
 
+  testWidgets('the next window card counts down from the controller clock', (tester) async {
+    // Sample data: first window opens 2026-10-01T08:55Z.
+    final h = Harness(now: DateTime.utc(2026, 10, 1, 6, 40));
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 6, 40)))));
+    await tester.pump();
+    expect(find.text('in 2 h 15 min'), findsOneWidget);
+
+    await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 8, 57)))));
+    await tester.pump();
+    expect(find.text('open, 8 min left'), findsOneWidget);
+  });
+
   testWidgets('a viewed journal entry can be self-reported as traded', (tester) async {
     final h = Harness();
     await pump(tester, h);

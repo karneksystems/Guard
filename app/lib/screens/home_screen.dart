@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:rule_engine/rule_engine.dart';
 
@@ -74,7 +76,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: Tokens.gutter),
         ],
-        _NextWindowCard(window: next, titleFor: state.titleFor, sourceFor: state.sourceFor),
+        _NextWindowCard(window: next, titleFor: state.titleFor, sourceFor: state.sourceFor, now: local.toUtc()),
         const SizedBox(height: Tokens.gutter),
         if (weekend) ...[
           Card(
@@ -139,17 +141,60 @@ class HomeScreen extends StatelessWidget {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TrackerScreen()));
 }
 
-class _NextWindowCard extends StatelessWidget {
-  const _NextWindowCard({required this.window, required this.titleFor, required this.sourceFor});
+/// Rebuilds every thirty seconds so the countdown moves. The wall clock is
+/// the controller's, so tests can pin it.
+class _NextWindowCard extends StatefulWidget {
+  const _NextWindowCard({required this.window, required this.titleFor, required this.sourceFor, required this.now});
 
   final Window? window;
   final String Function(String eventId) titleFor;
   final String Function(String eventId) sourceFor;
+  final DateTime now;
+
+  @override
+  State<_NextWindowCard> createState() => _NextWindowCardState();
+}
+
+class _NextWindowCardState extends State<_NextWindowCard> {
+  Timer? _tick;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (t) {
+      if (mounted) setState(() => _elapsed = Duration(seconds: 30 * t.tick));
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// "in 2 h 14 min", "opens in 4 min", "open, 6 min left", or "closed".
+  static String countdown(Window w, DateTime now) {
+    final opens = DateTime.parse(w.opensAtUtc).toUtc();
+    final closes = DateTime.parse(w.closesAtUtc).toUtc();
+    if (now.isBefore(opens)) {
+      final d = opens.difference(now);
+      if (d.inMinutes < 1) return 'opens in under a minute';
+      if (d.inHours < 1) return 'opens in ${d.inMinutes} min';
+      if (d.inHours < 24) return 'in ${d.inHours} h ${d.inMinutes % 60} min';
+      return 'in ${d.inDays} d ${d.inHours % 24} h';
+    }
+    if (now.isBefore(closes)) return 'open, ${(closes.difference(now).inSeconds / 60).ceil()} min left';
+    return 'closed';
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final w = window;
+    final w = widget.window;
+    final titleFor = widget.titleFor;
+    final sourceFor = widget.sourceFor;
+    final now = widget.now.add(_elapsed);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Tokens.gutter),
@@ -158,6 +203,7 @@ class _NextWindowCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(w == null ? 'Nothing scheduled' : w.instrument, style: text.displayMedium),
           if (w != null) ...[
+            Text(countdown(w, now), key: const Key('home-countdown'), style: text.titleMedium?.copyWith(color: Tokens.metal)),
             const SizedBox(height: 4),
             Text(w.reasons.map(titleFor).join(' · '), style: text.bodyLarge),
             const SizedBox(height: 4),

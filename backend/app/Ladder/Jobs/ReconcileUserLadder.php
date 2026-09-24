@@ -24,8 +24,12 @@ final class ReconcileUserLadder implements ShouldQueue, ShouldBeUnique
     public function handle(LadderReconciler $reconciler): void
     {
         $user = User::query()->find($this->userId);
-        if ($user !== null) {
-            $reconciler->reconcile($user);
+        if ($user === null) {
+            return;
+        }
+        $counts = $reconciler->reconcile($user);
+        if ($counts['created'] + $counts['cancelled'] > 0) {
+            SendResyncNudge::dispatch($this->userId);
         }
     }
 }

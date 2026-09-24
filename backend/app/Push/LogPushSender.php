@@ -26,4 +26,9 @@ final class LogPushSender implements PushSender
 
         return 'log-' . Str::lower(Str::random(12));
     }
+
+    public function sendResync(int $userId): void
+    {
+        Log::info('resync nudge', ['user' => $userId]);
+    }
 }

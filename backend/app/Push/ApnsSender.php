@@ -58,6 +58,26 @@ final class ApnsSender
         throw new PushRejected("APNs {$response->status()} $reason", prune: $dead, status: $response->status());
     }
 
+    /** Background push: content-available, priority 5, no alert. Wakes the app to resync. */
+    public function sendSilent(string $deviceToken, array $data): void
+    {
+        $response = Http::withOptions(['version' => 2.0, 'timeout' => 10])
+            ->withHeaders([
+                'authorization' => 'bearer ' . $this->token(),
+                'apns-topic' => $this->bundleId,
+                'apns-push-type' => 'background',
+                'apns-priority' => '5',
+                'apns-expiration' => (string) (time() + 3600),
+            ])
+            ->post($this->host() . '/3/device/' . $deviceToken, ['aps' => ['content-available' => 1]] + $data);
+
+        if (!$response->successful()) {
+            $reason = (string) ($response->json('reason') ?? 'Unknown');
+            $dead = $response->status() === 410 || in_array($reason, ['BadDeviceToken', 'Unregistered', 'DeviceTokenNotForTopic'], true);
+            throw new PushRejected("APNs {$response->status()} $reason", prune: $dead, status: $response->status());
+        }
+    }
+
     public function token(): string
     {
         return Cache::remember('apns.jwt.' . $this->keyId, now()->addMinutes(50), function () {

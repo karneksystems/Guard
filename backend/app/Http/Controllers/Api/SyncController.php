@@ -11,6 +11,8 @@ use App\Models\JournalEntry;
 use App\Models\Rung;
 use App\Models\User;
 use App\Models\Window;
+use App\Packs\PackRepository;
+use Illuminate\Validation\ValidationException;
 use DateInterval;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,6 +71,23 @@ final class SyncController extends Controller
             'quiet_hours.end' => ['required_with:quiet_hours', 'date_format:H:i'],
             'digest_local_time' => ['sometimes', 'date_format:H:i'],
         ]);
+
+        // A firm the packs don't know, or an account type the pack doesn't list, would
+        // throw inside the engine on every reconcile. Refuse it here instead.
+        $firmId = array_key_exists('firm_id', $data) ? $data['firm_id'] : $user->settings?->firm_id;
+        $accountTypeId = array_key_exists('account_type_id', $data) ? $data['account_type_id'] : $user->settings?->account_type_id;
+        if ($firmId !== null && (isset($data['firm_id']) || isset($data['account_type_id']) || ($data['mode'] ?? null) === 'firm-match')) {
+            $packs = app(PackRepository::class);
+            if (!in_array($firmId, $packs->firmIds(), true)) {
+                throw ValidationException::withMessages(['firm_id' => 'No pack for this firm.']);
+            }
+            if ($accountTypeId !== null) {
+                $ids = array_column($packs->load($firmId)['accountTypes'], 'id');
+                if (!in_array($accountTypeId, $ids, true)) {
+                    throw ValidationException::withMessages(['account_type_id' => 'Not an account type in this firm\'s pack.']);
+                }
+            }
+        }
 
         if (!$user->isPro()) {
             // Free tier: fixed 5/5 window, conservative mode, no hard block (docs/FREE-PRO-FLAGS.md).

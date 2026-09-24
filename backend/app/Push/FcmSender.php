@@ -67,6 +67,26 @@ final class FcmSender
         throw new PushRejected("FCM {$response->status()} $status $code", prune: $dead, status: $response->status());
     }
 
+    /** Data-only message at high priority; the app resyncs on receipt and shows nothing. */
+    public function sendSilent(string $deviceToken, array $data): void
+    {
+        $response = Http::withToken($this->accessToken())
+            ->timeout(10)
+            ->post($this->endpoint(), [
+                'message' => [
+                    'token' => $deviceToken,
+                    'data' => array_map(static fn ($v) => (string) $v, $data),
+                    'android' => ['priority' => 'high', 'ttl' => '3600s', 'collapse_key' => 'resync'],
+                ],
+            ]);
+
+        if (!$response->successful()) {
+            $status = (string) ($response->json('error.status') ?? '');
+            $dead = $response->status() === 404 || $status === 'NOT_FOUND';
+            throw new PushRejected("FCM {$response->status()} $status", prune: $dead, status: $response->status());
+        }
+    }
+
     public function accessToken(): string
     {
         return Cache::remember('fcm.access.' . md5($this->clientEmail), now()->addMinutes(50), function () {

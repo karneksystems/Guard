@@ -12,4 +12,10 @@ interface PushSender
 {
     /** @return string|null provider message id, if the provider gives one */
     public function sendRung(Rung $rung): ?string;
+
+    /**
+     * A silent push telling every device of the user to resync: the ladder
+     * changed (PUSH-ARCHITECTURE, event time revised). Never shows anything.
+     */
+    public function sendResync(int $userId): void;
 }

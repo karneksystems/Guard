@@ -9,3 +9,6 @@ Schedule::command('calendar:sync --hours=2')->everyMinute()->withoutOverlapping(
 
 // Nightly sweep so every user's next 48 hours is scheduled even if nothing changed.
 Schedule::command('ladder:reconcile')->dailyAt('00:30')->timezone('UTC');
+
+// Housekeeping after the nightly sweep.
+Schedule::command('guard:prune')->dailyAt('01:00')->timezone('UTC');
