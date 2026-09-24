@@ -7,7 +7,8 @@ never runs on a terminal.
 
 Read `docs/TOTAL-BRIEF-Prop-News-Guard.md` first. It wins on product. `docs/INDEX.md`
 lists the rest, and `docs/DECISIONS.md` says why things are the way they are.
-`docs/NEXT-STEPS.md` is the list of things only the account holder can do.
+`docs/NEXT-STEPS.md` is the list of things only the account holder can do, and
+`docs/TESTING-ON-DEVICE.md` says how to try the CI builds on a phone or PC.
 
 ## Layout
 

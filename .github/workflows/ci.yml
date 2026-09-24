@@ -81,3 +81,9 @@ jobs:
         working-directory: app
       - run: flutter build apk --debug
         working-directory: app
+      # Sideload from the run's Artifacts (docs/TESTING-ON-DEVICE.md).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guard-android-debug
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14

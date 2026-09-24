@@ -9,6 +9,7 @@ import '../notifications/ladder_mirror.dart';
 import '../notifications/notification_scheduler.dart';
 import '../notifications/push_registrar.dart';
 import '../notifications/reminders.dart';
+import '../notifications/rung_words.dart';
 import '../platform/platform_bridge.dart';
 import '../sync/api_client.dart';
 import '../sync/sync_payload.dart';
@@ -184,6 +185,49 @@ class GuardController {
       }
     }
     return false;
+  }
+
+  /// Debug builds only: a window on the gated apps opening in a minute and
+  /// lasting two, with the one-minute and open alerts, so the gate can be
+  /// tried on a device without waiting for a real release. Returns the
+  /// window id. The real schedule is restored by the next payload or
+  /// settings change.
+  Future<String> startTestWindow() async {
+    final opens = _now().toUtc().add(const Duration(minutes: 1));
+    final closes = opens.add(const Duration(minutes: 2));
+    const id = 'test-window-000000000';
+    final specs = [
+      ...state.windows.map((w) => GateWindowSpec(
+            windowId: w.windowId,
+            opensAtMs: DateTime.parse(w.opensAtUtc).toUtc().millisecondsSinceEpoch,
+            closesAtMs: DateTime.parse(w.closesAtUtc).toUtc().millisecondsSinceEpoch,
+            instrument: w.instrument,
+            events: w.reasons.map(state.titleFor).join(', '),
+          )),
+      GateWindowSpec(
+        windowId: id,
+        opensAtMs: opens.millisecondsSinceEpoch,
+        closesAtMs: closes.millisecondsSinceEpoch,
+        instrument: 'TEST',
+        events: 'Test window',
+      ),
+    ];
+    if (bridge.hasGate) {
+      await bridge.scheduleGateWindows(
+        windows: specs,
+        gatedAppIds: state.gatedAppIds,
+        protection: state.settings['protection'] as String? ?? 'soft-gate',
+      );
+    }
+    final sched = mirror?.scheduler;
+    if (sched != null) {
+      String hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+      final t1 = RungWords.forRung(kind: 't-1', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
+      final open = RungWords.forRung(kind: 'open', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
+      await sched.schedule(ScheduledNotification(id: kReminderIdBase + 900, alertId: 'test:t-1', title: t1.title, body: t1.body, atUtc: opens.subtract(const Duration(minutes: 1)), channel: t1.channel));
+      await sched.schedule(ScheduledNotification(id: kReminderIdBase + 901, alertId: 'test:open', title: open.title, body: open.body, atUtc: opens, channel: open.channel));
+    }
+    return id;
   }
 
   /// Digest, weekend and inactivity reminders follow the windows and the tracker.

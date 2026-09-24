@@ -35,6 +35,11 @@ jobs:
         working-directory: app
       - run: flutter build windows --debug
         working-directory: app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guard-windows-debug
+          path: app/build/windows/x64/runner/Debug/
+          retention-days: 14
 
   # One Mac runner for both Apple targets. iOS compiles the Runner target,
   # which holds the Screen Time bridge and the shared store; the three

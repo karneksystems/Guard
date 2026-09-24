@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../features/flags.dart';
@@ -136,6 +137,18 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => _deleteEverything(context, c),
           child: const Text('Delete my data'),
         ),
+        if (kDebugMode)
+          OutlinedButton(
+            key: const Key('setting-test-window'),
+            onPressed: () async {
+              await c.startTestWindow();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Test window opens in one minute and lasts two. Open a gated app once the alert lands.'),
+              ));
+            },
+            child: const Text('Start a 2-minute test window (debug)'),
+          ),
       ],
     );
   }

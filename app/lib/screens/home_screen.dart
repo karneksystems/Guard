@@ -47,6 +47,19 @@ class HomeScreen extends StatelessWidget {
         Text('${_cap(protection)} · $mode · ${state.instruments.length} instruments · $syncLine', style: text.bodySmall),
         const SizedBox(height: Tokens.gutter),
         const PermissionBanner(),
+        if (!state.isSample && (state.calendarAge == null || state.calendarAge! > const Duration(minutes: 60))) ...[
+          Card(
+            key: const Key('home-feed-stale'),
+            color: Tokens.statusWarn.withValues(alpha: 0.12),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(state.calendarAge == null
+                  ? 'The calendar feed has not loaded yet. Windows below may be incomplete.'
+                  : 'The calendar feed is ${state.calendarAge!.inMinutes} minutes old. Times below may have moved.'),
+            ),
+          ),
+          const SizedBox(height: Tokens.gutter),
+        ],
         if (state.missingPermissions.isNotEmpty) const SizedBox(height: Tokens.gutter),
         if (state.rulesChanged != null && state.flags.rulesChangedFlag) ...[
           Card(

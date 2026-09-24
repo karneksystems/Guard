@@ -3,6 +3,7 @@
 class SyncPayload {
   SyncPayload({
     required this.serverTimeUtc,
+    this.calendarFetchedAtUtc,
     required this.pro,
     this.proUntil,
     required this.settings,
@@ -17,6 +18,7 @@ class SyncPayload {
     final settings = (json['settings'] as Map<String, dynamic>?) ?? const {};
     return SyncPayload(
       serverTimeUtc: json['serverTimeUtc'] as String,
+      calendarFetchedAtUtc: json['calendarFetchedAt'] == null ? null : DateTime.tryParse(json['calendarFetchedAt'] as String)?.toUtc(),
       pro: json['pro'] == true,
       proUntil: json['proUntil'] == null ? null : DateTime.tryParse(json['proUntil'] as String)?.toUtc(),
       settings: {
@@ -38,6 +40,9 @@ class SyncPayload {
   }
 
   final String serverTimeUtc;
+
+  /// When the server last heard from the calendar vendor. Null before the first sync.
+  final DateTime? calendarFetchedAtUtc;
   final bool pro;
   final DateTime? proUntil;
   final Map<String, dynamic> settings;
@@ -65,6 +70,7 @@ class SyncPayload {
 
   Map<String, dynamic> toJson() => {
         'serverTimeUtc': serverTimeUtc,
+        'calendarFetchedAt': calendarFetchedAtUtc?.toIso8601String(),
         'pro': pro,
         'proUntil': proUntil?.toIso8601String(),
         'settings': {

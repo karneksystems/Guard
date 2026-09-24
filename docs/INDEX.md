@@ -18,6 +18,7 @@ log. These files move to the product's own private repo once the name clears (D3
 | CALENDAR-VENDORS.md | Vendor pricing, the cost curve, and the evaluation plan |
 | APPLE-ENTITLEMENT-REQUEST.md | Text for the Family Controls request, file it now |
 | NEXT-STEPS.md | What only the account holder can do next, in unblocking order |
+| TESTING-ON-DEVICE.md | Sideloading the CI builds on a phone or PC and trying the gate with the debug test window |
 | DEPLOY.md | Backend environment, Horizon supervisors, cron, first deploy |
 | PLAY-DECLARATIONS.md | Console wording for specialUse, full-screen intent, usage access, overlay, plus the video and data-safety answers |
 | legal/PRIVACY.md, legal/TERMS.md | Drafts for review before M9. Say exactly what the server holds and what never leaves the device |

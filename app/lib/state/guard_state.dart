@@ -125,6 +125,13 @@ class GuardState extends ChangeNotifier {
     return [...result.windows]..sort((a, b) => a.opensAtUtc.compareTo(b.opensAtUtc));
   }
 
+  /// How old the vendor feed is, as of the last sync. Null on sample data or
+  /// before the server has ever synced the calendar.
+  Duration? get calendarAge {
+    final at = _payload?.calendarFetchedAtUtc;
+    return at == null ? null : _now().toUtc().difference(at);
+  }
+
   Duration? get syncAge => _payload == null ? null : DateTime.now().toUtc().difference(_payload!.fetchedAtUtc);
 
   void update(SyncPayload payload) {
