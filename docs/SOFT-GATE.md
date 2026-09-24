@@ -24,13 +24,23 @@ secondary button.
 
 ## Android
 
-Trigger. An exact alarm (setAlarmClock) at opens_at starts GateService, a foreground
-service of type specialUse with the notification "Restricted window open, watching
-for MT5". The service polls UsageStatsManager.queryEvents over the last two seconds,
-once a second. On MOVE_TO_FOREGROUND for a gated package it launches the gate
-Activity as a TYPE_APPLICATION_OVERLAY window, full-screen and touch-modal. At
-closes_at the service stops itself. If SCHEDULE_EXACT_ALARM is denied, fall back to
-setWindow with a ten-minute early start and let the service idle until opens_at.
+Trigger. An exact alarm at opens_at starts GateService, a foreground service of
+type specialUse with the notification "Restricted window open, watching for MT5".
+The service polls UsageStatsManager.queryEvents over the last two seconds, once a
+second, and on the way into an armed state (window open, or a view's minute up) it
+checks who is in front right now, so a trader already sitting in MT5 gets the
+gate. On a gated package coming to the front it launches the gate Activity over
+the trading app. That launch is allowed from a service only when "display over
+other apps" is granted; without it the service posts a full-screen-intent
+notification instead, which the OS turns into the gate on a locked or idle screen
+and a heads-up otherwise. At closes_at the service stops itself.
+
+If SCHEDULE_EXACT_ALARM is denied, the fallback is an inexact alarm with a
+ten-minute window, and Android 12+ refuses a foreground-service start from an
+inexact alarm. The receiver catches that and posts a loud notification asking the
+user to open the app, which re-arms the schedule from the foreground. The banner
+on Home already says exact alarms are off. A permission flip cancels every exact
+alarm, so the boot receiver also listens for that broadcast and re-arms.
 
 Permissions in onboarding, each with one plain screen explaining why:
 PACKAGE_USAGE_STATS (special access page), SYSTEM_ALERT_WINDOW, SCHEDULE_EXACT_ALARM
@@ -85,6 +95,12 @@ Limits: no live countdown on the card, no custom layout, no hold gesture. The
 Family Controls distribution entitlement is needed on the app and all three
 extensions. Development builds work without it.
 
+A sync that lands inside a window (or its lead time) shields at once from the app
+and registers a schedule long enough for the OS to accept, so on a short remainder
+the lift can be up to fifteen minutes late; a shield that never lifts was the
+alternative. Re-registering only touches windows that changed: stopping an
+activity never fires intervalDidEnd, so a blanket stop would strand the shield.
+
 Two more limits found in the build (D14). DeviceActivity refuses an interval
 under fifteen minutes, so a five-and-five window is monitored from fifteen
 minutes before it closes: the shield can arrive early, never late, and the card
@@ -97,8 +113,10 @@ of this is in `app/ios/Runner/ScreenTimeGate.swift` and the three folders under
 
 ## macOS
 
-Menu-bar agent (LSUIElement), login item via SMAppService. NSWorkspace's
-didLaunchApplicationNotification and didActivateApplicationNotification, filtered by
-bundle id, net.metaquotes.metatrader5 for the CrossOver wrapper, or whatever the user
-picks from running apps. Gate is an NSPanel at screen-saver level on the screen of
-the frontmost window. Screen Time isn't available to third-party Mac apps.
+Tray app via the same tray plugin as Windows, login item via launch_at_startup.
+NSWorkspace's didLaunchApplicationNotification and didActivateApplicationNotification,
+filtered by bundle id, plus a one-second check of the frontmost app so a trader
+already in MT5 at window open gets the gate. The gate is the Flutter window raised
+to screen-saver level on the trading app's screen; Stay out hides the trading app;
+lowering restores the window's old frame and hides it. Screen Time isn't available
+to third-party Mac apps.
