@@ -63,3 +63,21 @@ jobs:
         working-directory: app
       - run: flutter test
         working-directory: app
+
+  # Compiles the Kotlin side (channels, gate service). The runner image carries
+  # the Android SDK; this is the only place the native code gets built in CI.
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter build apk --debug
+        working-directory: app
