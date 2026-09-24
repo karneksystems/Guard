@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'notifications/ladder_mirror.dart';
+import 'notifications/notification_scheduler.dart';
+import 'notifications/push_registrar.dart';
 import 'onboarding/onboarding_flow.dart';
 import 'platform/platform_bridge.dart';
 import 'shell/adaptive_shell.dart';
@@ -38,6 +41,9 @@ Future<void> main() async {
             tz: DateTime.now().timeZoneName,
             appVersion: kAppVersion,
           ),
+    mirror: LadderMirror(LocalNotificationScheduler.supported ? LocalNotificationScheduler() : FakeScheduler()),
+    // Firebase registration replaces this once the project's config files exist.
+    push: FakeRegistrar(),
   );
   runApp(GuardApp(state: state, controller: controller));
   unawaited(controller.start());

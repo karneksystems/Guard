@@ -72,5 +72,14 @@ full-screen intent, notifications, battery) and the Home banner that names what'
 missing. Gated app ids never leave the device. The Kotlin side is written but not
 compiled here; the first `flutter build apk` is its check.
 
-Not yet: Drift for the journal and history, the real push senders (M3), the gate
-modules (M4, M5, M7), fonts bundled, store builds. See `docs/MILESTONES.md`.
+M3: backend APNs (token auth, time-sensitive, collapse id) and FCM (service
+account, data-only, high priority) senders behind a per-platform router that
+prunes dead tokens; signatures are verified against OpenSSL in tests. App side:
+the local mirror schedules every rung as an OS notification twenty seconds after
+its push time and cancels it when the push lands. Set `GUARD_PUSH_SENDER=live`
+with the APNs and FCM keys in `.env` to go live. The app's Firebase registration
+waits on a Firebase project: drop `google-services.json` and
+`GoogleService-Info.plist` in and replace `FakeRegistrar` in `main.dart`.
+
+Not yet: Drift for the journal and history, the gate modules (M4, M5, M7),
+fonts bundled, store builds. See `docs/MILESTONES.md`.

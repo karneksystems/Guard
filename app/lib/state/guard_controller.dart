@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
+import '../notifications/ladder_mirror.dart';
+import '../notifications/push_registrar.dart';
 import '../platform/platform_bridge.dart';
 import '../sync/api_client.dart';
+import '../sync/sync_payload.dart';
 import '../sync/sync_service.dart';
 import '../sync/sync_store.dart';
 import 'guard_state.dart';
@@ -16,6 +21,8 @@ class GuardController {
     this.api,
     this.store,
     this.sync,
+    this.mirror,
+    this.push,
   });
 
   final GuardState state;
@@ -23,6 +30,10 @@ class GuardController {
   final ApiClient? api;
   final LocalStore? store;
   final SyncService? sync;
+  final LadderMirror? mirror;
+  final PushRegistrar? push;
+
+  StreamSubscription<Map<String, dynamic>>? _pushSub;
 
   Future<void> start() async {
     final prefs = await store?.prefs();
@@ -32,10 +43,42 @@ class GuardController {
       if (gated != null) state.setGatedApps(gated);
     }
     await refreshPermissions();
+    await mirror?.scheduler.initialise();
+    _pushSub ??= push?.messages.listen(_onPush);
+
     final cached = await store?.latest();
-    if (cached != null) state.update(cached);
+    if (cached != null) await applyPayload(cached);
     final fresh = await sync?.sync();
-    if (fresh != null) state.update(fresh);
+    if (fresh != null) await applyPayload(fresh);
+    await registerPushToken();
+  }
+
+  /// A new payload: state, then the local mirror of its ladder.
+  Future<void> applyPayload(SyncPayload payload) async {
+    state.update(payload);
+    await mirror?.reconcile(payload);
+  }
+
+  Future<void> registerPushToken() async {
+    final token = await push?.token();
+    final a = api;
+    if (token == null || a == null || a.token == null) return;
+    try {
+      await a.updateDevice(pushToken: token, notifState: state.permissions[GuardPermission.notifications] == false ? 'denied' : 'granted');
+    } on Exception {
+      // Next launch tries again.
+    }
+  }
+
+  void _onPush(Map<String, dynamic> data) {
+    final alertId = data['alertId'] as String?;
+    if (alertId != null) {
+      unawaited(mirror?.pushArrived(alertId) ?? Future.value());
+    }
+  }
+
+  void dispose() {
+    _pushSub?.cancel();
   }
 
   Future<void> refreshPermissions() async {
