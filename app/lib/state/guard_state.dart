@@ -97,7 +97,7 @@ class GuardState extends ChangeNotifier {
 
   /// Windows in time order, computed by the device engine.
   List<Window> get windows {
-    final base = _payload?.engineInput(_userId) ?? SampleData.engineInput();
+    final base = _payload?.engineInput(_payload?.userId ?? _userId) ?? SampleData.engineInput();
     final input = {
       ...base,
       'settings': {

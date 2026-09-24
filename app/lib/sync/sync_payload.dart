@@ -3,6 +3,7 @@
 class SyncPayload {
   SyncPayload({
     required this.serverTimeUtc,
+    this.userId,
     this.calendarFetchedAtUtc,
     required this.pro,
     this.proUntil,
@@ -18,6 +19,7 @@ class SyncPayload {
     final settings = (json['settings'] as Map<String, dynamic>?) ?? const {};
     return SyncPayload(
       serverTimeUtc: json['serverTimeUtc'] as String,
+      userId: json['userId'] as String?,
       calendarFetchedAtUtc: json['calendarFetchedAt'] == null ? null : DateTime.tryParse(json['calendarFetchedAt'] as String)?.toUtc(),
       pro: json['pro'] == true,
       proUntil: json['proUntil'] == null ? null : DateTime.tryParse(json['proUntil'] as String)?.toUtc(),
@@ -40,6 +42,11 @@ class SyncPayload {
   }
 
   final String serverTimeUtc;
+
+  /// The server's user id. The device engine hashes window ids with it, so a
+  /// window computed here has the same id as the server's and the journal
+  /// links up. Null before the first sync.
+  final String? userId;
 
   /// When the server last heard from the calendar vendor. Null before the first sync.
   final DateTime? calendarFetchedAtUtc;
@@ -70,6 +77,7 @@ class SyncPayload {
 
   Map<String, dynamic> toJson() => {
         'serverTimeUtc': serverTimeUtc,
+        'userId': userId,
         'calendarFetchedAt': calendarFetchedAtUtc?.toIso8601String(),
         'pro': pro,
         'proUntil': proUntil?.toIso8601String(),

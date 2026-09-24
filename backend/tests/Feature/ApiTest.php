@@ -78,6 +78,13 @@ final class ApiTest extends TestCase
         $this->getJson('/api/packs/nope')->assertNotFound();
     }
 
+    public function test_sync_carries_the_user_id_for_the_device_engine(): void
+    {
+        [, $token] = $this->registered();
+        $userId = Device::findByToken($token)->user_id;
+        $this->withToken($token)->getJson('/api/sync')->assertOk()->assertJsonPath('userId', (string) $userId);
+    }
+
     public function test_journal_entry_is_recorded(): void
     {
         [, $token] = $this->registered();
