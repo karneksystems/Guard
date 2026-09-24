@@ -1,5 +1,6 @@
 import '../sync/sync_payload.dart';
 import 'notification_scheduler.dart';
+import 'reminders.dart';
 import 'rung_words.dart';
 
 /// Decision D1: every server rung is mirrored as a local notification at
@@ -46,6 +47,7 @@ class LadderMirror {
 
     var cancelled = 0;
     for (final id in await scheduler.pendingIds()) {
+      if (id >= kReminderIdBase) continue; // reminders.dart owns that range
       if (!wanted.containsKey(id)) {
         await scheduler.cancel(id);
         cancelled++;

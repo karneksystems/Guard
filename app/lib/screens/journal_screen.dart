@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
 
@@ -11,6 +12,7 @@ class JournalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final state = GuardScope.of(context);
+    final c = ControllerScope.of(context);
     final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 7));
     final entries = state.pro ? state.journal : state.journal.where((e) => e.atUtc.isAfter(cutoff)).toList();
 
@@ -40,6 +42,14 @@ class JournalScreen extends StatelessWidget {
                 _ => 'Traded anyway',
               }),
               subtitle: Text('${e.atUtc.toIso8601String().substring(0, 10)} · ${e.atUtc.toIso8601String().substring(11, 16)} UTC'),
+              // Self-report: a viewed gate that turned into a trade. Honesty is the product.
+              trailing: e.outcome == 'viewed'
+                  ? TextButton(
+                      key: Key('journal-traded-${e.windowId}'),
+                      onPressed: () => c.amendOutcome(e.windowId, 'traded-anyway'),
+                      child: const Text('I traded'),
+                    )
+                  : null,
               shape: const Border(bottom: BorderSide(color: Tokens.champagneHairline)),
             ),
         if (!state.pro && state.journal.length > entries.length) ...[

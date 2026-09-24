@@ -5,6 +5,7 @@ import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
 import 'permissions_screen.dart';
+import 'tracker_screen.dart';
 
 /// Everything from onboarding, editable afterwards. Writes go through the
 /// controller, which applies locally and pushes to the backend.
@@ -85,6 +86,12 @@ class SettingsScreen extends StatelessWidget {
               });
             }
           },
+        ),
+        _Row(
+          key: const Key('setting-tracker'),
+          label: 'Tracker and reminders',
+          value: state.tracker.dailyLossLimit == null ? 'Not set' : 'Limit ${state.tracker.currency}${state.tracker.dailyLossLimit!.toStringAsFixed(0)}',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TrackerScreen())),
         ),
         if (c.bridge.supportedPermissions.length > 1)
           _Row(

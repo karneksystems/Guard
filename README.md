@@ -100,5 +100,15 @@ needs the process alive. Rungs schedule as Windows toasts. Compiled by the
 windows-build CI job; not yet run on a Windows machine. macOS gets the tray and
 the notifications but no gate until M7.
 
+M6, free features: the manual tracker (daily-loss room, minimum trading days
+from logged trades, inactivity limit, weekend warning) lives in prefs on the
+device and drives Home's tiles. Reminders are local notifications planned from
+the windows and the tracker (`lib/notifications/reminders.dart`): the
+night-before digest at the user's time, the weekend hold warning on Friday, the
+inactivity reminder three days before the firm's limit. Reminder ids sit above
+the ladder's range so the two schedulers never cancel each other. The source
+strip shows on every window. A viewed journal entry can be self-reported as a
+trade.
+
 Not yet: Drift for the journal and history, the iOS shield (M7), fonts bundled,
 MSIX packaging and signing, store builds. See `docs/MILESTONES.md`.

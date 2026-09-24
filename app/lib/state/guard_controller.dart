@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../features/tracker.dart';
 import '../notifications/ladder_mirror.dart';
 import '../notifications/push_registrar.dart';
+import '../notifications/reminders.dart';
 import '../platform/platform_bridge.dart';
 import '../sync/api_client.dart';
 import '../sync/sync_payload.dart';
@@ -23,7 +25,9 @@ class GuardController {
     this.sync,
     this.mirror,
     this.push,
-  });
+    this.reminders,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final GuardState state;
   final PlatformBridge bridge;
@@ -32,6 +36,8 @@ class GuardController {
   final SyncService? sync;
   final LadderMirror? mirror;
   final PushRegistrar? push;
+  final ReminderPlanner? reminders;
+  final DateTime Function() _now;
 
   StreamSubscription<Map<String, dynamic>>? _pushSub;
 
@@ -41,6 +47,8 @@ class GuardController {
       if (prefs['onboarded'] == true) state.markOnboarded();
       final gated = (prefs['gatedApps'] as List?)?.cast<String>();
       if (gated != null) state.setGatedApps(gated);
+      final tracker = prefs['tracker'] as Map<String, dynamic>?;
+      if (tracker != null) state.setTracker(Tracker.fromJson(tracker));
     }
     await refreshPermissions();
     await mirror?.scheduler.initialise();
@@ -59,7 +67,37 @@ class GuardController {
     state.update(payload);
     await mirror?.reconcile(payload);
     await pushGateSchedule();
+    await refreshReminders();
   }
+
+  /// Digest, weekend and inactivity reminders follow the windows and the tracker.
+  Future<void> refreshReminders() async {
+    final r = reminders;
+    if (r == null) return;
+    await r.reconcile(
+      windows: state.windows,
+      titleFor: state.titleFor,
+      digestLocalTime: state.settings['digestLocalTime'] as String? ?? '20:00',
+      tracker: state.tracker,
+      now: _now().toUtc(),
+    );
+  }
+
+  /// The clock, injectable for tests.
+  DateTime get now => _now();
+
+  /// Local date today, the key the tracker files entries under.
+  String get today => Tracker.dateKey(_now().toLocal());
+
+  Future<void> updateTracker(Tracker t) async {
+    final pruned = t.prune(today);
+    state.setTracker(pruned);
+    await store?.savePrefs({'tracker': pruned.toJson()});
+    await refreshReminders();
+  }
+
+  Future<void> logPnl(double amount, {String? note}) =>
+      updateTracker(state.tracker.add(PnlEntry(date: today, amount: amount, note: note)));
 
   /// Hand the device engine's windows to the platform gate, with the gated app
   /// ids and the protection mode. Called after every payload and settings change.
@@ -94,9 +132,17 @@ class GuardController {
 
   /// One outcome recorded right now, by the desktop gate or by the user.
   Future<void> recordOutcome(String windowId, String outcome, [DateTime? atUtc]) async {
-    final o = GateOutcome(windowId: windowId, outcome: outcome, atUtc: (atUtc ?? DateTime.now()).toUtc());
+    final o = GateOutcome(windowId: windowId, outcome: outcome, atUtc: (atUtc ?? _now()).toUtc());
     state.addJournal([o]);
     await _postOutcome(o);
+  }
+
+  /// The user says a viewed gate became a trade. Amends the entry; the backend
+  /// gets it as a fresh journal post with the same window id.
+  Future<void> amendOutcome(String windowId, String outcome) async {
+    final o = state.amendJournal(windowId, outcome);
+    if (o == null) return;
+    await _postOutcome(GateOutcome(windowId: windowId, outcome: outcome, atUtc: _now().toUtc()));
   }
 
   Future<void> _postOutcome(GateOutcome o) async {
@@ -143,6 +189,7 @@ class GuardController {
   Future<void> updateSettings(Map<String, dynamic> patch) async {
     state.applySettings(patch);
     await pushGateSchedule();
+    if (patch.containsKey('digestLocalTime') || patch.containsKey('windowBeforeMin')) await refreshReminders();
     final a = api;
     if (a == null || a.token == null) return;
     try {
@@ -155,6 +202,7 @@ class GuardController {
   Future<void> replaceInstruments(List<Map<String, dynamic>> instruments) async {
     state.applyInstruments(instruments);
     await pushGateSchedule();
+    await refreshReminders();
     final a = api;
     if (a == null || a.token == null) return;
     try {

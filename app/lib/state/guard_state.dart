@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:rule_engine/rule_engine.dart';
 
 import '../data/sample_data.dart';
+import '../features/tracker.dart';
 import '../platform/platform_bridge.dart';
 import '../sync/sync_payload.dart';
 
@@ -20,6 +21,7 @@ class GuardState extends ChangeNotifier {
   List<String> _gatedAppIds = const ['net.metaquotes.metatrader5'];
   Map<GuardPermission, bool> _permissions = const {};
   final List<GateOutcome> _journal = [];
+  Tracker _tracker = const Tracker();
 
   SyncPayload? get payload => _payload;
   bool get isSample => _payload == null;
@@ -35,6 +37,21 @@ class GuardState extends ChangeNotifier {
 
   /// Newest first.
   List<GateOutcome> get journal => List.unmodifiable(_journal);
+
+  Tracker get tracker => _tracker;
+
+  /// The source strip: where the event came from and when we last fetched it.
+  String sourceFor(String eventId) {
+    final p = _payload;
+    if (p == null) return 'sample calendar';
+    for (final e in p.events) {
+      if (e['id'] != eventId) continue;
+      final source = e['source'] as String? ?? 'calendar feed';
+      final fetched = e['fetchedAt'] as String?;
+      return fetched == null || fetched.length < 10 ? source : '$source · fetched ${fetched.substring(0, 10)}';
+    }
+    return 'calendar feed';
+  }
 
   /// Permissions the platform supports that the user hasn't granted yet.
   List<GuardPermission> get missingPermissions =>
@@ -96,6 +113,23 @@ class GuardState extends ChangeNotifier {
   void markOnboarded() {
     _onboarded = true;
     notifyListeners();
+  }
+
+  void setTracker(Tracker t) {
+    _tracker = t;
+    notifyListeners();
+  }
+
+  /// Self-report: the latest entry for this window changes outcome in place.
+  /// Returns the amended entry, or null when there was nothing to amend.
+  GateOutcome? amendJournal(String windowId, String outcome) {
+    final i = _journal.indexWhere((e) => e.windowId == windowId);
+    if (i < 0) return null;
+    final old = _journal[i];
+    final amended = GateOutcome(windowId: old.windowId, outcome: outcome, atUtc: old.atUtc);
+    _journal[i] = amended;
+    notifyListeners();
+    return amended;
   }
 
   void addJournal(Iterable<GateOutcome> outcomes) {

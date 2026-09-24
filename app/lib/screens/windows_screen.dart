@@ -21,13 +21,17 @@ class WindowsScreen extends StatelessWidget {
           Card(
             child: ListTile(
               title: Text('${w.instrument} · ${w.opensAtUtc.substring(0, 10)}'),
-              subtitle: Text('${w.opensAtUtc.substring(11, 16)} to ${w.closesAtUtc.substring(11, 16)} UTC\n${w.reasons.map(state.titleFor).join(', ')}'),
+              subtitle: Text(
+                '${w.opensAtUtc.substring(11, 16)} to ${w.closesAtUtc.substring(11, 16)} UTC\n'
+                '${w.reasons.map(state.titleFor).join(', ')}\n'
+                '${w.reasons.map(state.sourceFor).toSet().join(' · ')}',
+              ),
               isThreeLine: true,
               trailing: Text(w.verified ? 'calendar' : 'unverified', style: text.bodySmall),
             ),
           ),
         const SizedBox(height: Tokens.gutter),
-        Text('Source: ${state.isSample ? 'sample calendar' : 'calendar feed'} · times can change · not financial advice', style: text.bodySmall),
+        Text('Times can change and tentative events move. Not financial advice.', style: text.bodySmall),
       ],
     );
   }

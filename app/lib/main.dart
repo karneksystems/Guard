@@ -9,6 +9,7 @@ import 'gate/desktop_gate.dart';
 import 'notifications/ladder_mirror.dart';
 import 'notifications/notification_scheduler.dart';
 import 'notifications/push_registrar.dart';
+import 'notifications/reminders.dart';
 import 'onboarding/onboarding_flow.dart';
 import 'platform/platform_bridge.dart';
 import 'shell/adaptive_shell.dart';
@@ -29,6 +30,7 @@ Future<void> main() async {
   final state = GuardState();
   final store = SyncStore(await getApplicationSupportDirectory());
   final api = kApiBaseUrl.isEmpty ? null : ApiClient(baseUrl: kApiBaseUrl);
+  final scheduler = LocalNotificationScheduler.supported ? LocalNotificationScheduler() : FakeScheduler();
   final controller = GuardController(
     state: state,
     bridge: MethodChannelBridge(),
@@ -43,7 +45,8 @@ Future<void> main() async {
             tz: DateTime.now().timeZoneName,
             appVersion: kAppVersion,
           ),
-    mirror: LadderMirror(LocalNotificationScheduler.supported ? LocalNotificationScheduler() : FakeScheduler()),
+    mirror: LadderMirror(scheduler),
+    reminders: ReminderPlanner(scheduler),
     // Firebase registration replaces this once the project's config files exist.
     push: FakeRegistrar(),
   );
@@ -57,11 +60,14 @@ Future<void> main() async {
 }
 
 class GuardApp extends StatefulWidget {
-  const GuardApp({super.key, this.state, this.controller, this.navigatorKey});
+  const GuardApp({super.key, this.state, this.controller, this.navigatorKey, this.home});
 
   final GuardState? state;
   final GuardController? controller;
   final GlobalKey<NavigatorState>? navigatorKey;
+
+  /// Tests swap the root for a single screen.
+  final Widget? home;
 
   @override
   State<GuardApp> createState() => _GuardAppState();
@@ -85,7 +91,7 @@ class _GuardAppState extends State<GuardApp> {
           theme: GuardTheme.light(),
           darkTheme: GuardTheme.dark(),
           themeMode: ThemeMode.system,
-          home: const _Root(),
+          home: widget.home ?? const _Root(),
         ),
       ),
     );
