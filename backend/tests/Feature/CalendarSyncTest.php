@@ -34,8 +34,8 @@ final class CalendarSyncTest extends TestCase
         $sync = new CalendarSync($vendor);
         [$from, $to] = $this->window();
 
-        $this->assertSame(['created' => 2, 'changed' => 0, 'unchanged' => 0], $sync->sync($from, $to));
-        $this->assertSame(['created' => 0, 'changed' => 0, 'unchanged' => 2], $sync->sync($from, $to));
+        $this->assertSame(['created' => 2, 'changed' => 0, 'unchanged' => 0, 'removed' => 0], $sync->sync($from, $to));
+        $this->assertSame(['created' => 0, 'changed' => 0, 'unchanged' => 2, 'removed' => 0], $sync->sync($from, $to));
         $this->assertSame(2, CalendarEvent::count());
         Event::assertNotDispatched(CalendarEventChanged::class);
     }
@@ -50,7 +50,7 @@ final class CalendarSyncTest extends TestCase
         $sync->sync($from, $to);
 
         $vendor->setEvents([['vendorId' => 'nfp', 'currency' => 'USD', 'title' => 'NFP', 'impact' => 'high', 'scheduledAtUtc' => '2026-10-02T13:30:00Z']]);
-        $this->assertSame(['created' => 0, 'changed' => 1, 'unchanged' => 0], $sync->sync($from, $to));
+        $this->assertSame(['created' => 0, 'changed' => 1, 'unchanged' => 0, 'removed' => 0], $sync->sync($from, $to));
 
         $event = CalendarEvent::query()->where('vendor_id', 'nfp')->firstOrFail();
         $this->assertSame('2026-10-02T13:30:00Z', $event->scheduled_at_utc->format('Y-m-d\TH:i:s\Z'));
@@ -64,6 +64,6 @@ final class CalendarSyncTest extends TestCase
         $vendor->setEvents([['vendorId' => 'far', 'currency' => 'USD', 'title' => 'Far', 'impact' => 'high', 'scheduledAtUtc' => '2027-01-01T00:00:00Z']]);
         [$from, $to] = $this->window();
 
-        $this->assertSame(['created' => 0, 'changed' => 0, 'unchanged' => 0], (new CalendarSync($vendor))->sync($from, $to));
+        $this->assertSame(['created' => 0, 'changed' => 0, 'unchanged' => 0, 'removed' => 0], (new CalendarSync($vendor))->sync($from, $to));
     }
 }

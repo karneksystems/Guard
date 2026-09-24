@@ -27,19 +27,32 @@ final class SendRung implements ShouldQueue
 
     public function handle(PushSender $sender): void
     {
+        // Claim the rung first: exactly one worker moves it from scheduled to
+        // sending, so a duplicate dispatch or a retry after the provider already
+        // accepted the push can never send it twice. A rung left in sending
+        // after a crash is not resent: one alert lost beats two delivered.
+        $claimed = Rung::query()
+            ->where('alert_id', $this->alertId)
+            ->where('state', Rung::SCHEDULED)
+            ->update(['state' => Rung::SENDING]);
+        if ($claimed !== 1) {
+            return;
+        }
         $rung = Rung::query()->find($this->alertId);
-        if ($rung === null || $rung->state !== Rung::SCHEDULED) {
+        if ($rung === null) {
             return;
         }
 
         try {
             $providerId = $sender->sendRung($rung);
-            $rung->forceFill(['state' => Rung::SENT, 'provider_msg_id' => $providerId])->save();
         } catch (Throwable $e) {
             if ($this->attempts() >= $this->tries) {
                 $rung->forceFill(['state' => Rung::FAILED])->save();
+            } else {
+                $rung->forceFill(['state' => Rung::SCHEDULED])->save(); // the retry claims it again
             }
             throw $e;
         }
+        $rung->forceFill(['state' => Rung::SENT, 'provider_msg_id' => $providerId])->save();
     }
 }

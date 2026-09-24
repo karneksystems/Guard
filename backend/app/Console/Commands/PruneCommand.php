@@ -28,7 +28,14 @@ final class PruneCommand extends Command
         $short = $now->sub(new DateInterval('P' . (int) $this->option('days') . 'D'));
         $long = $now->sub(new DateInterval('P' . (int) $this->option('calendar-days') . 'D'));
 
-        $rungs = Rung::query()->whereIn('state', [Rung::SENT, Rung::CANCELLED, Rung::FAILED])->where('fire_at_utc', '<', $short)->delete();
+        $rungs = Rung::query()->whereIn('state', [Rung::SENT, Rung::CANCELLED, Rung::FAILED, Rung::SENDING])->where('fire_at_utc', '<', $short)->delete();
+        // A rung still scheduled a day after it was due never fired; log it, then let it go.
+        $stuck = Rung::query()->where('state', Rung::SCHEDULED)->where('fire_at_utc', '<', $now->sub(new DateInterval('P1D')));
+        $stuckCount = $stuck->count();
+        if ($stuckCount > 0) {
+            \Illuminate\Support\Facades\Log::warning('stuck scheduled rungs pruned', ['count' => $stuckCount]);
+            $stuck->delete();
+        }
         $windows = Window::query()->where('closes_at_utc', '<', $short)->delete();
         $events = CalendarEvent::query()->where('scheduled_at_utc', '<', $long)->delete();
         $firm = FirmListEvent::query()->where('scheduled_at_utc', '<', $long)->delete();

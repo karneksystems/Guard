@@ -17,6 +17,7 @@ Besides the usual Laravel keys (`APP_KEY`, `APP_URL`, `DB_*`, `REDIS_*`):
 | `FCM_SERVICE_ACCOUNT` | path to the Firebase service-account JSON |
 | `GUARD_RECEIPT_VERIFIER` | `reject` until the store verifiers exist; never `fake` in production |
 | `GUARD_PACKS_DIR` | where the packs live on the host; `packs:publish` copies them from the repo |
+| `TRUSTED_PROXIES` | the load balancer's CIDRs, comma separated, so rate limits see client addresses. Never `*` |
 
 ## Processes
 
@@ -26,7 +27,8 @@ Besides the usual Laravel keys (`APP_KEY`, `APP_URL`, `DB_*`, `REDIS_*`):
   leave within two seconds of `fire_at`, and `default` for everything else.
 - The scheduler: `* * * * * php artisan schedule:run` in cron. It runs
   `calendar:sync` every fifteen minutes and the two-hour tight sweep every
-  minute, and `ladder:reconcile` at 00:30 UTC.
+  minute, `ladder:sweep` every minute (re-dispatches any rung whose queue job
+  went missing), `ladder:reconcile` at 00:30 UTC and `guard:prune` at 01:00.
 - `php artisan octane:start` or plain PHP-FPM behind nginx. The API is small
   and read-heavy; FPM is fine to start.
 

@@ -37,7 +37,8 @@ final class FirmListImporter
         return DB::transaction(function () use ($firmId, $rows, $source, $now, $utc, &$matched, &$unmatched) {
             $dates = [];
             foreach ($rows as $r) {
-                $dates[(new DateTimeImmutable($r['scheduledAtUtc'], $utc))->format('Y-m-d')] = true;
+                // Bucket by the UTC day of the stored instant, whatever offset the row carried.
+                $dates[(new DateTimeImmutable($r['scheduledAtUtc'], $utc))->setTimezone($utc)->format('Y-m-d')] = true;
             }
             foreach (array_keys($dates) as $day) {
                 FirmListEvent::query()
@@ -82,21 +83,23 @@ final class FirmListImporter
         $want = self::keywords($title);
         $best = null;
         $bestScore = 0;
+        $rank = ['high' => 2, 'medium' => 1, 'low' => 0];
         foreach ($candidates as $c) {
             $have = self::keywords($c->title);
-            $score = count(array_intersect($want, $have));
+            // Shared words first, then impact: a firm's list is about the big releases.
+            $score = count(array_intersect($want, $have)) * 10 + ($rank[$c->impact] ?? 0);
             if ($score > $bestScore) {
                 $best = $c;
                 $bestScore = $score;
             }
         }
-        // One candidate at the same minute with nothing in common is still the firm's
-        // event nine times out of ten (naming differs between vendors); take it.
-        if ($best === null && $candidates->count() === 1) {
-            return $candidates->first();
+        if ($bestScore >= 10) {
+            return $best;
         }
-
-        return $best;
+        // No shared words. One candidate at the same minute is still the firm's event
+        // nine times out of ten (naming differs between vendors); several is a guess
+        // we don't make.
+        return $candidates->count() === 1 ? $candidates->first() : null;
     }
 
     /** @return list<string> */

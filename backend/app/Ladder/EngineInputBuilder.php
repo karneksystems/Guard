@@ -19,22 +19,53 @@ final class EngineInputBuilder
     {
     }
 
+    /**
+     * The settings as the plan allows them right now. Pro is enforced at write
+     * time too, but an expired subscription must not keep its presets: Free is
+     * conservative, five and five, soft gate at most, two instruments.
+     */
+    public static function clampSettings(User $user): array
+    {
+        $s = $user->settings;
+        $pro = $user->isPro();
+        $mode = $s?->mode ?? 'conservative';
+        $protection = $s?->protection ?? 'soft-gate';
+
+        return [
+            'user_id' => $user->id,
+            'mode' => $pro ? $mode : 'conservative',
+            'protection' => (!$pro && $protection === 'hard-block') ? 'soft-gate' : $protection,
+            'window_before_min' => $pro ? ($s?->window_before_min ?? 5) : 5,
+            'window_after_min' => $pro ? ($s?->window_after_min ?? 5) : 5,
+            'firm_id' => $pro ? $s?->firm_id : null,
+            'account_type_id' => $pro ? $s?->account_type_id : null,
+            'quiet_hours' => $s?->quiet_hours,
+            'digest_local_time' => $s?->digest_local_time ?? '20:00',
+        ];
+    }
+
     public function build(User $user, DateTimeImmutable $from, DateTimeImmutable $to): array
     {
         $settings = $user->settings;
+        $clamped = self::clampSettings($user);
+        $instruments = $user->instruments
+            ->map(fn ($i) => ['symbol' => $i->symbol, 'basket' => $i->basket_currencies])
+            ->values()
+            ->all();
+        if (!$user->isPro()) {
+            $instruments = array_slice($instruments, 0, 2);
+        }
         $input = [
             'userId' => (string) $user->id,
             'settings' => [
-                'mode' => $settings?->mode ?? 'conservative',
-                'windowBeforeMin' => $settings?->window_before_min ?? 5,
-                'windowAfterMin' => $settings?->window_after_min ?? 5,
+                'mode' => $clamped['mode'],
+                'windowBeforeMin' => $clamped['window_before_min'],
+                'windowAfterMin' => $clamped['window_after_min'],
             ],
-            'instruments' => $user->instruments
-                ->map(fn ($i) => ['symbol' => $i->symbol, 'basket' => $i->basket_currencies])
-                ->values()
-                ->all(),
+            'instruments' => $instruments,
             'events' => CalendarEvent::query()
                 ->whereBetween('scheduled_at_utc', [$from, $to])
+                ->whereNull('removed_at')
                 ->orderBy('scheduled_at_utc')
                 ->get()
                 ->map(fn (CalendarEvent $e) => $e->toEngineEvent())
@@ -42,7 +73,7 @@ final class EngineInputBuilder
                 ->all(),
         ];
 
-        if (($settings?->mode ?? 'conservative') === 'firm-match' && $settings->firm_id !== null) {
+        if ($clamped['mode'] === 'firm-match' && $settings?->firm_id !== null && $settings->account_type_id !== null) {
             $input['packId'] = $settings->firm_id;
             $input['accountTypeId'] = $settings->account_type_id;
             // The firm's own list, where one has been imported (firm-list:import). The

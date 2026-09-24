@@ -18,7 +18,7 @@ final class DeviceController extends Controller
     {
         $data = $request->validate([
             'platform' => ['required', 'in:android,ios,windows,macos'],
-            'tz' => ['nullable', 'string', 'max:64'],
+            'tz' => ['nullable', 'string', 'max:64', 'timezone:all'],
             'app_version' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -47,7 +47,7 @@ final class DeviceController extends Controller
         $data = $request->validate([
             'push_token' => ['nullable', 'string'],
             'notif_state' => ['nullable', 'in:unknown,granted,denied,invalid'],
-            'tz' => ['nullable', 'string', 'max:64'],
+            'tz' => ['nullable', 'string', 'max:64', 'timezone:all'],
             'app_version' => ['nullable', 'string', 'max:32'],
         ]);
         /** @var Device $device */
@@ -56,6 +56,10 @@ final class DeviceController extends Controller
             $data['token_valid'] = $data['push_token'] !== null;
         }
         $device->fill($data)->save();
+        // Quiet hours follow the user, and the user follows their latest device.
+        if (!empty($data['tz']) && $device->user->tz !== $data['tz']) {
+            $device->user->forceFill(['tz' => $data['tz']])->save();
+        }
 
         return response()->json(['ok' => true]);
     }

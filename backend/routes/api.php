@@ -18,7 +18,7 @@ Route::middleware(DeviceAuth::class)->group(function () {
     Route::get('/sync', [SyncController::class, 'show']);
     Route::put('/settings', [SyncController::class, 'updateSettings']);
     Route::put('/instruments', [SyncController::class, 'replaceInstruments']);
-    Route::post('/journal', [SyncController::class, 'journal']);
+    Route::post('/journal', [SyncController::class, 'journal'])->middleware('throttle:60,1');
     Route::post('/entitlement', [EntitlementController::class, 'store'])->middleware('throttle:10,1');
     Route::delete('/account', [AccountController::class, 'destroy']);
 });

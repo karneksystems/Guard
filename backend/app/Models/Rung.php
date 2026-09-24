@@ -8,6 +8,9 @@ class Rung extends Model
 {
     public const SCHEDULED = 'scheduled';
 
+    /** Claimed by a worker; never resent. */
+    public const SENDING = 'sending';
+
     public const SENT = 'sent';
 
     public const CANCELLED = 'cancelled';

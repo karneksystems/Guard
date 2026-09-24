@@ -39,14 +39,29 @@ final class LadderReconciler
 
         $wanted = [];
         $quiet = QuietHours::fromSettings($user->settings?->quiet_hours, $user->tz ?? 'UTC');
+        $stale = $now->sub(new DateInterval('PT30S'));
         foreach ($ladder as $rung) {
-            if ($quiet !== null && $quiet->silences($rung['kind'], new DateTimeImmutable($rung['fireAtUtc'], new DateTimeZone('UTC')))) {
+            $fireAt = new DateTimeImmutable($rung['fireAtUtc'], new DateTimeZone('UTC'));
+            if ($quiet !== null && $quiet->silences($rung['kind'], $fireAt)) {
                 continue; // PUSH-ARCHITECTURE: only T-5, T-1 and open fire inside quiet hours
+            }
+            if ($fireAt < $stale) {
+                // Already past: "window in 60 min" sent now would be a lie. The one
+                // exception is open while the window is still open, which is news.
+                $closes = null;
+                foreach ($result['windows'] as $w) {
+                    if ($w['windowId'] === $rung['windowId']) {
+                        $closes = new DateTimeImmutable($w['closesAtUtc'], new DateTimeZone('UTC'));
+                    }
+                }
+                if (!($rung['kind'] === 'open' && $closes !== null && $now < $closes)) {
+                    continue;
+                }
             }
             $wanted[$rung['alertId']] = $rung;
         }
 
-        return DB::transaction(function () use ($user, $result, $wanted, $from, $to) {
+        return DB::transaction(function () use ($user, $result, $wanted, $from, $to, $now) {
             // Windows: replace the horizon's set wholesale; they're derived data.
             Window::query()->where('user_id', $user->id)->whereBetween('opens_at_utc', [$from, $to])->delete();
             foreach ($result['windows'] as $w) {
@@ -80,11 +95,30 @@ final class LadderReconciler
             }
 
             $alreadyKnown = Rung::query()->whereIn('alert_id', array_keys($wanted))->pluck('state', 'alert_id');
+            $toDispatch = [];
             foreach ($wanted as $alertId => $rung) {
-                if ($alreadyKnown->has($alertId)) {
-                    continue; // scheduled (kept above), or sent, or cancelled by hand: never re-create
-                }
                 $fireAt = new DateTimeImmutable($rung['fireAtUtc'], new DateTimeZone('UTC'));
+                $state = $alreadyKnown->get($alertId);
+                if ($state === Rung::CANCELLED) {
+                    // The vendor moved the event back, or quiet hours came off: the id
+                    // is a pure hash, so the old row comes back to life.
+                    Rung::query()->where('alert_id', $alertId)->update(['state' => Rung::SCHEDULED, 'fire_at_utc' => $fireAt]);
+                    $toDispatch[$alertId] = $fireAt;
+                    $counts['created']++;
+                    continue;
+                }
+                if ($state === Rung::SCHEDULED) {
+                    // Kept. If it is overdue its queue job may have been lost (a job
+                    // picked up before commit, a Redis flush): dispatch again, the
+                    // claim in SendRung makes a second job harmless.
+                    if ($fireAt <= $now) {
+                        $toDispatch[$alertId] = $fireAt;
+                    }
+                    continue;
+                }
+                if ($state !== null) {
+                    continue; // sending, sent or failed: never again
+                }
                 Rung::create([
                     'alert_id' => $alertId,
                     'user_id' => $user->id,
@@ -93,9 +127,16 @@ final class LadderReconciler
                     'fire_at_utc' => $fireAt,
                     'state' => Rung::SCHEDULED,
                 ]);
-                SendRung::dispatch($alertId)->onQueue('ladder')->delay($fireAt);
+                $toDispatch[$alertId] = $fireAt;
                 $counts['created']++;
             }
+
+            // Jobs go out once the rows are visible to the worker.
+            DB::afterCommit(function () use ($toDispatch) {
+                foreach ($toDispatch as $alertId => $fireAt) {
+                    SendRung::dispatch($alertId)->onQueue('ladder')->delay($fireAt);
+                }
+            });
 
             return $counts;
         });

@@ -79,7 +79,7 @@ final class FirmListTest extends TestCase
             ['currency' => 'USD', 'title' => 'Non-Farm Payrolls', 'scheduledAtUtc' => '2026-10-02T12:30:00Z'],
         ], 'test');
 
-        $user = User::create(['tz' => 'UTC']);
+        $user = User::create(['tz' => 'UTC', 'pro_until' => now()->addMonth()]);
         Setting::create(['user_id' => $user->id, 'mode' => 'firm-match', 'firm_id' => 'ftmo', 'account_type_id' => 'ftmo-account']);
         Instrument::create(['user_id' => $user->id, 'symbol' => 'XAUUSD', 'basket_currencies' => ['USD']]);
 

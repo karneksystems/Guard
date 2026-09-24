@@ -120,7 +120,8 @@ final class ResyncNudgeAndPruneTest extends TestCase
         $this->travelTo($this->utc('2026-09-24T12:00:00'));
         $this->artisan('guard:prune')->assertSuccessful();
 
-        $this->assertSame(['r' . str_repeat('b', 20), 'r' . str_repeat('c', 20)], Rung::query()->orderBy('alert_id')->pluck('alert_id')->all());
+        // The scheduled rung from 1 September never fired: stuck, logged, gone.
+        $this->assertSame(['r' . str_repeat('b', 20)], Rung::query()->orderBy('alert_id')->pluck('alert_id')->all());
         $this->assertSame([str_repeat('b', 20)], Window::query()->pluck('id')->all());
         $this->assertSame(['New'], CalendarEvent::query()->pluck('title')->all());
     }

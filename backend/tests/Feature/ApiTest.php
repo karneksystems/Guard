@@ -81,7 +81,12 @@ final class ApiTest extends TestCase
     public function test_journal_entry_is_recorded(): void
     {
         [, $token] = $this->registered();
-        $this->withToken($token)->postJson('/api/journal', ['window_id' => str_repeat('a', 20), 'outcome' => 'stayed-out', 'at_utc' => '2026-10-02T12:26:00Z'])
+        $this->withToken($token)->postJson('/api/journal', ['window_id' => str_repeat('a', 20), 'outcome' => 'stayed-out', 'at_utc' => now()->subMinute()->toIso8601String()])
             ->assertCreated();
+        // A time far in the future or a window id with odd characters is refused.
+        $this->withToken($token)->postJson('/api/journal', ['window_id' => str_repeat('a', 20), 'outcome' => 'stayed-out', 'at_utc' => '2099-01-01T00:00:00Z'])
+            ->assertUnprocessable();
+        $this->withToken($token)->postJson('/api/journal', ['window_id' => str_repeat('A', 20), 'outcome' => 'stayed-out', 'at_utc' => now()->toIso8601String()])
+            ->assertUnprocessable();
     }
 }

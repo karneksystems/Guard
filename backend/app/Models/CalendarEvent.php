@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CalendarEvent extends Model
 {
     protected $fillable = ['vendor', 'vendor_id', 'currency', 'title', 'impact', 'scheduled_at_utc',
-        'revised_from_utc', 'tentative', 'source', 'fetched_at'];
+        'revised_from_utc', 'tentative', 'source', 'fetched_at', 'removed_at'];
 
     protected function casts(): array
     {
@@ -15,6 +15,7 @@ class CalendarEvent extends Model
             'scheduled_at_utc' => 'immutable_datetime',
             'revised_from_utc' => 'immutable_datetime',
             'fetched_at' => 'immutable_datetime',
+            'removed_at' => 'immutable_datetime',
             'tentative' => 'boolean',
         ];
     }

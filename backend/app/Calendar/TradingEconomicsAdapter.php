@@ -35,19 +35,34 @@ final class TradingEconomicsAdapter implements VendorAdapter
             $to->format('Y-m-d'),
         );
         $rows = Http::timeout(20)->retry(2, 500)->get($url, ['c' => $this->apiKey, 'f' => 'json'])->throw()->json();
+        if (!is_array($rows)) {
+            throw new RuntimeException('Trading Economics returned a non-JSON body');
+        }
 
         $out = [];
         foreach ($rows as $row) {
-            if (empty($row['Date']) || empty($row['Currency'])) {
+            // Untrusted input: a malformed row is skipped, never allowed to abort the sync.
+            if (!is_array($row) || empty($row['Date']) || empty($row['Currency']) || empty($row['Event']) || !is_string($row['Event'])) {
+                continue;
+            }
+            try {
+                $at = (new DateTimeImmutable((string) $row['Date'], new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC'));
+            } catch (\Exception) {
+                continue;
+            }
+            $currency = strtoupper(substr((string) $row['Currency'], 0, 8));
+            if (!preg_match('/^[A-Z]{3}$/', $currency)) {
                 continue;
             }
             $importance = (int) ($row['Importance'] ?? 0);
+            $title = mb_substr(trim($row['Event']), 0, 255);
             $out[] = [
-                'vendorId' => (string) ($row['CalendarId'] ?? md5($row['Event'] . $row['Date'] . $row['Country'])),
-                'currency' => strtoupper($row['Currency']),
-                'title' => (string) $row['Event'],
+                // The fallback id must not include the date, or a moved event becomes a new one.
+                'vendorId' => (string) ($row['CalendarId'] ?? md5($title . '|' . (string) ($row['Country'] ?? '') . '|' . $currency)),
+                'currency' => $currency,
+                'title' => $title,
                 'impact' => $importance >= 3 ? 'high' : ($importance === 2 ? 'medium' : 'low'),
-                'scheduledAtUtc' => (new DateTimeImmutable($row['Date'], new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC')),
+                'scheduledAtUtc' => $at,
                 'tentative' => false,
                 'source' => 'Trading Economics',
             ];

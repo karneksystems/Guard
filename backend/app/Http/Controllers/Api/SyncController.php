@@ -38,10 +38,11 @@ final class SyncController extends Controller
             'calendarFetchedAt' => CalendarEvent::query()->max('fetched_at'),
             'pro' => $user->isPro(),
             'proUntil' => $user->pro_until?->utc()->format('Y-m-d\TH:i:s\Z'),
-            'settings' => $user->settings,
+            'settings' => EngineInputBuilder::clampSettings($user),
             'instruments' => $user->instruments->map(fn (Instrument $i) => ['symbol' => $i->symbol, 'basket' => $i->basket_currencies])->values(),
             'events' => CalendarEvent::query()
                 ->whereBetween('scheduled_at_utc', [$now->sub(new DateInterval('PT2H')), $eventsTo])
+                ->whereNull('removed_at')
                 ->orderBy('scheduled_at_utc')
                 ->get()
                 ->map(fn (CalendarEvent $e) => $e->toEngineEvent() + ['source' => $e->source, 'fetchedAt' => $e->fetched_at?->format('Y-m-d\TH:i:s\Z')])
@@ -76,7 +77,11 @@ final class SyncController extends Controller
         // throw inside the engine on every reconcile. Refuse it here instead.
         $firmId = array_key_exists('firm_id', $data) ? $data['firm_id'] : $user->settings?->firm_id;
         $accountTypeId = array_key_exists('account_type_id', $data) ? $data['account_type_id'] : $user->settings?->account_type_id;
-        if ($firmId !== null && (isset($data['firm_id']) || isset($data['account_type_id']) || ($data['mode'] ?? null) === 'firm-match')) {
+        $mode = $data['mode'] ?? $user->settings?->mode ?? 'conservative';
+        if ($mode === 'firm-match' && ($firmId === null || $accountTypeId === null)) {
+            throw ValidationException::withMessages(['mode' => 'Firm match needs a firm and an account type.']);
+        }
+        if ($firmId !== null && (isset($data['firm_id']) || isset($data['account_type_id']) || $mode === 'firm-match')) {
             $packs = app(PackRepository::class);
             if (!in_array($firmId, $packs->firmIds(), true)) {
                 throw ValidationException::withMessages(['firm_id' => 'No pack for this firm.']);
@@ -138,11 +143,26 @@ final class SyncController extends Controller
         /** @var User $user */
         $user = $request->user();
         $data = $request->validate([
-            'window_id' => ['required', 'string', 'size:20'],
+            'window_id' => ['required', 'string', 'size:20', 'regex:/^[a-z0-9-]{20}$/'],
             'outcome' => ['required', 'in:' . implode(',', JournalEntry::OUTCOMES)],
-            'at_utc' => ['required', 'date'],
+            'at_utc' => ['required', 'date', 'after:-30 days', 'before:+1 hour'],
         ]);
-        $entry = JournalEntry::create($data + ['user_id' => $user->id, 'device_id' => $request->attributes->get('device')->id]);
+        // Device-computed window ids don't always match the server's (the device
+        // hashes its own user id), so existence isn't required; when the window
+        // is known its shape is snapshotted, because windows prune after a week.
+        $window = Window::query()->where('id', $data['window_id'])->where('user_id', $user->id)->first();
+        $entry = JournalEntry::create($data + [
+            'user_id' => $user->id,
+            'device_id' => $request->attributes->get('device')->id,
+            'instrument' => $window?->instrument,
+            'opens_at_utc' => $window?->opens_at_utc,
+            'closes_at_utc' => $window?->closes_at_utc,
+        ]);
+        // The record is bounded: the oldest rows go past five thousand.
+        $excess = JournalEntry::query()->where('user_id', $user->id)->count() - 5000;
+        if ($excess > 0) {
+            JournalEntry::query()->where('user_id', $user->id)->orderBy('at_utc')->limit($excess)->delete();
+        }
 
         return response()->json(['ok' => true, 'id' => $entry->id], 201);
     }

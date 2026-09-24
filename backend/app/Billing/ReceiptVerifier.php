@@ -12,6 +12,6 @@ use DateTimeImmutable;
  */
 interface ReceiptVerifier
 {
-    /** @return DateTimeImmutable|null the subscription's expiry in UTC, or null when not valid */
-    public function verify(string $platform, string $plan, string $receipt): ?DateTimeImmutable;
+    /** @return Verified|null the expiry and the store's original transaction id, or null when not valid */
+    public function verify(string $platform, string $plan, string $receipt): ?Verified;
 }

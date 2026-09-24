@@ -4,13 +4,22 @@ namespace App\Ladder\Jobs;
 
 use App\Ladder\LadderReconciler;
 use App\Models\User;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class ReconcileUserLadder implements ShouldQueue, ShouldBeUnique
+/**
+ * Unique only while queued: a change that lands during a running reconcile
+ * must queue another one, not vanish until the nightly sweep.
+ */
+final class ReconcileUserLadder implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    /** @var list<int> */
+    public array $backoff = [5, 30];
 
     public function __construct(public readonly int $userId)
     {
