@@ -44,8 +44,10 @@ In the order that unblocks the most. Each one is short.
    the minutes and the event set against the page, then set `lastVerified`,
    `verifiedBy`, `sourceFetchedAt` and `needsReverify: false`. Until then the
    app shows "unverified" and uses the larger window. FTMO publishes its own
-   restricted-event list; paste the URL into `eventListUrl` and the ingestion
-   can be built.
+   restricted-event list; paste the URL into `eventListUrl` and the fetcher
+   can be built. The import and matching are done
+   (`php artisan firm-list:import ftmo rows.json`); only the page parser is
+   per firm.
 
 8. **Legal.** Read `docs/legal/PRIVACY.md` and `docs/legal/TERMS.md`, set the
    contact address, and get them hosted at URLs the store listings can point to.

@@ -3,6 +3,7 @@
 namespace App\Ladder;
 
 use App\Models\CalendarEvent;
+use App\Models\FirmListEvent;
 use App\Models\User;
 use App\Packs\PackRepository;
 use DateTimeImmutable;
@@ -44,8 +45,20 @@ final class EngineInputBuilder
         if (($settings?->mode ?? 'conservative') === 'firm-match' && $settings->firm_id !== null) {
             $input['packId'] = $settings->firm_id;
             $input['accountTypeId'] = $settings->account_type_id;
-            // firmEventIds is populated once a firm's own list is ingested. Until then the
-            // engine falls back to the calendar and says so in its notes.
+            // The firm's own list, where one has been imported (firm-list:import). The
+            // engine only uses it when the pack says eventSet firm-list; with no rows it
+            // falls back to the calendar and says so in its notes.
+            $ids = FirmListEvent::query()
+                ->where('firm_id', $settings->firm_id)
+                ->whereNotNull('calendar_event_id')
+                ->whereBetween('scheduled_at_utc', [$from, $to])
+                ->pluck('calendar_event_id')
+                ->map(fn ($id) => (string) $id)
+                ->values()
+                ->all();
+            if ($ids !== []) {
+                $input['firmEventIds'] = $ids;
+            }
         }
 
         return $input;

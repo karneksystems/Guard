@@ -41,7 +41,11 @@ The pack picks the rule by account type: minutes before and after, which event s
 (the firm's own list or the calendar's high-impact set), which instruments are
 affected (event currency, all, or a list), which actions are restricted, whether an
 SL or TP trigger counts, and the consequence. The engine computes windows with the
-pack's minutes and event set. If the pack says firm-list and the list hasn't been
+pack's minutes and event set. A firm's list is imported with
+`php artisan firm-list:import <firmId> <rows.json>` (backend/app/FirmLists), which
+matches each row to a calendar event by currency, time within five minutes and
+shared title words, and the matched ids become firmEventIds on every reconcile for
+that firm's users. If the pack says firm-list and the list hasn't been
 ingested yet, it falls back to calendar high-impact and the window shows "using the
 calendar, not the firm's list".
 

@@ -132,6 +132,11 @@ class LocalNotificationScheduler implements NotificationScheduler {
         fullScreenIntent: urgent,
         ongoing: false,
         tag: n.alertId,
+        // PUSH-ARCHITECTURE: T-1 and open repeat alarm-style until dismissed.
+        // FLAG_INSISTENT (0x4) loops the sound; the alarm stream gets it past
+        // the media volume. The OS caps nothing, so the words say "dismiss".
+        additionalFlags: urgent ? Int32List.fromList(const [4]) : null,
+        audioAttributesUsage: urgent ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
       ),
       iOS: DarwinNotificationDetails(
         interruptionLevel: n.channel == 'ladder' && n.title.contains('60 min')
