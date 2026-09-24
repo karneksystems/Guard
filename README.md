@@ -134,5 +134,11 @@ ios-build job; the extension targets are added in Xcode once, per
 to fifteen minutes anchored to the close, and "View for 60 seconds" is a set of
 usage-threshold events. Distribution waits on the entitlement.
 
-Not yet: Drift for the journal and history, fonts bundled, MSIX packaging and
-signing, store builds, the store billing SDKs. See `docs/MILESTONES.md`.
+Also in: Poppins and Inter bundled (OFL, licences beside the files), the
+journal persisted on the device with the Pro streak, an on-demand unsigned MSIX
+job (`native.yml`, workflow_dispatch), and drafts of the privacy policy, terms
+and Play declarations under `docs/legal/` and `docs/PLAY-DECLARATIONS.md` for
+the user to review before M9.
+
+Not yet: MSIX signing, store builds, the store billing SDKs, ads. See
+`docs/MILESTONES.md`.

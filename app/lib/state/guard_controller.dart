@@ -55,6 +55,14 @@ class GuardController {
       if (tracker != null) state.setTracker(Tracker.fromJson(tracker));
       final packs = prefs['packs'] as Map<String, dynamic>?;
       if (packs != null) state.setPacks(PackCache.fromJson(packs));
+      final journal = (prefs['journal'] as List?)?.cast<Map<String, dynamic>>();
+      if (journal != null) {
+        state.restoreJournal(journal.map((j) => GateOutcome(
+              windowId: j['windowId'] as String,
+              outcome: j['outcome'] as String,
+              atUtc: DateTime.parse(j['atUtc'] as String).toUtc(),
+            )));
+      }
     }
     await refreshPermissions();
     await mirror?.scheduler.initialise();
@@ -190,15 +198,28 @@ class GuardController {
     final outcomes = await bridge.drainJournal();
     if (outcomes.isEmpty) return;
     state.addJournal(outcomes);
+    await _saveJournal();
     for (final o in outcomes) {
       await _postOutcome(o);
     }
+  }
+
+  /// The journal lives on the device first (Pro keeps it all, Free shows a
+  /// week); the backend copy is for the hub later.
+  Future<void> _saveJournal() async {
+    final keep = state.journal.take(1000);
+    await store?.savePrefs({
+      'journal': [
+        for (final e in keep) {'windowId': e.windowId, 'outcome': e.outcome, 'atUtc': e.atUtc.toIso8601String()},
+      ],
+    });
   }
 
   /// One outcome recorded right now, by the desktop gate or by the user.
   Future<void> recordOutcome(String windowId, String outcome, [DateTime? atUtc]) async {
     final o = GateOutcome(windowId: windowId, outcome: outcome, atUtc: (atUtc ?? _now()).toUtc());
     state.addJournal([o]);
+    await _saveJournal();
     await _postOutcome(o);
   }
 
@@ -207,6 +228,7 @@ class GuardController {
   Future<void> amendOutcome(String windowId, String outcome) async {
     final o = state.amendJournal(windowId, outcome);
     if (o == null) return;
+    await _saveJournal();
     await _postOutcome(GateOutcome(windowId: windowId, outcome: outcome, atUtc: _now().toUtc()));
   }
 

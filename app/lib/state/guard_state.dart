@@ -191,7 +191,42 @@ class GuardState extends ChangeNotifier {
     if (outcomes.isEmpty) return;
     _journal.insertAll(0, outcomes);
     _journal.sort((a, b) => b.atUtc.compareTo(a.atUtc));
+    if (_journal.length > 1000) _journal.removeRange(1000, _journal.length);
     notifyListeners();
+  }
+
+  /// Restore from the device store. Replaces what's in memory.
+  void restoreJournal(Iterable<GateOutcome> outcomes) {
+    _journal
+      ..clear()
+      ..addAll(outcomes)
+      ..sort((a, b) => b.atUtc.compareTo(a.atUtc));
+    notifyListeners();
+  }
+
+  /// Pro: consecutive local days, ending today or yesterday, on which a gate
+  /// was shown and nothing was traded anyway. Zero when the last such day had
+  /// a trade in the window, or there is no journal yet.
+  int streak(DateTime nowLocal) {
+    if (_journal.isEmpty) return 0;
+    final byDay = <String, bool>{}; // day -> clean
+    for (final e in _journal) {
+      final day = Tracker.dateKey(e.atUtc.toLocal());
+      byDay[day] = (byDay[day] ?? true) && e.outcome != 'traded-anyway';
+    }
+    var day = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+    var key = Tracker.dateKey(day);
+    if (!byDay.containsKey(key)) {
+      day = day.subtract(const Duration(days: 1));
+      key = Tracker.dateKey(day);
+    }
+    var n = 0;
+    while (byDay[key] == true) {
+      n++;
+      day = day.subtract(const Duration(days: 1));
+      key = Tracker.dateKey(day);
+    }
+    return n;
   }
 }
 

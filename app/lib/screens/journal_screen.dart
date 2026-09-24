@@ -20,6 +20,14 @@ class JournalScreen extends StatelessWidget {
       padding: const EdgeInsets.all(Tokens.gutter),
       children: [
         Text('Journal', style: text.headlineMedium),
+        if (state.flags.journalStreak) ...[
+          const SizedBox(height: 4),
+          Text(
+            switch (state.streak(c.now.toLocal())) { 0 => 'No streak yet', 1 => '1 day clean', final n => '$n days clean' },
+            key: const Key('journal-streak'),
+            style: text.bodyLarge,
+          ),
+        ],
         const SizedBox(height: Tokens.gutter),
         if (entries.isEmpty)
           const Text('No gates yet. Entries appear here after your first restricted window.')
