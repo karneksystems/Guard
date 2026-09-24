@@ -46,6 +46,8 @@ class GuardController {
 
   StreamSubscription<Map<String, dynamic>>? _pushSub;
   StreamSubscription<NotificationTap>? _tapSub;
+  Timer? _periodic;
+  bool _syncing = false;
 
   /// Where a tap wants the app to go. The shell listens.
   final StreamController<NotificationTap> opens = StreamController.broadcast(sync: true);
@@ -81,6 +83,41 @@ class GuardController {
     await refreshPacks();
     await registerPushToken();
     await drainGateJournal();
+  }
+
+  /// Pull the server's current view and apply it. Returns false when there is
+  /// no backend or it could not be reached (the cache stands either way).
+  /// Safe to call often: overlapping calls collapse into one.
+  Future<bool> resync() async {
+    final s = sync;
+    if (s == null || _syncing) return false;
+    _syncing = true;
+    try {
+      final fresh = await s.sync();
+      if (fresh == null) return false;
+      final changed = state.payload == null || fresh.fetchedAtUtc != state.payload!.fetchedAtUtc;
+      if (changed) await applyPayload(fresh);
+      await refreshPacks();
+      return changed;
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  /// Desktop keeps the process alive, so it polls; a revised event reaches the
+  /// toasts within one period even with no push channel. Mobile resyncs on
+  /// resume instead (GuardApp).
+  void startPeriodicSync(Duration every) {
+    _periodic?.cancel();
+    _periodic = Timer.periodic(every, (_) => unawaited(resync()));
+  }
+
+  /// Resume: refresh when the last sync is older than [staleAfter].
+  Future<void> resumed({Duration staleAfter = const Duration(minutes: 2)}) async {
+    final age = state.syncAge;
+    if (age == null || age > staleAfter) await resync();
+    await drainGateJournal();
+    await refreshPermissions();
   }
 
   /// A new payload: state, the local mirror of its ladder, the platform gate.
@@ -278,6 +315,7 @@ class GuardController {
   void dispose() {
     _pushSub?.cancel();
     _tapSub?.cancel();
+    _periodic?.cancel();
     opens.close();
   }
 

@@ -37,11 +37,13 @@ notification and controls channels and the full-screen intent. Channels: ladder_
 repeat until dismissed, capped at 60 seconds), ladder (T-60, T-15, T-5, end; heads-up
 with sound), digest (default importance).
 
-Windows. The tray app keeps a WebSocket to the backend with a heartbeat. A rung
-arrives as a JSON frame and the app raises a toast through the notification centre
-with two actions, "Open Wideberth" and "Snooze 1 min". When the MSIX ships with
-Store identity, WNS raw push is added as a second channel carrying the same alert
-id, and the app dedupes.
+Windows. Every rung is a scheduled toast through the notification centre, with
+"Open" and "Snooze 1 min" actions, registered from the last sync so it fires with
+the app closed. The tray app resyncs every five minutes while running and on
+launch, so a revised event moves the toasts within five minutes (D15). The live
+WebSocket in the original design waits on Reverb supporting Laravel 13; when the
+MSIX ships with Store identity, WNS raw push becomes the live channel, carrying
+the same alert id, and the app dedupes.
 
 macOS. APNs for Mac in the notarised build. WebSocket fallback identical to Windows.
 

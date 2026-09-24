@@ -58,6 +58,7 @@ Future<void> main() async {
   if (DesktopShell.isDesktop) {
     await DesktopShell().init(appName: 'Guard', appVersion: kAppVersion);
     DesktopGate(controller: controller, navigatorKey: navigatorKey).start();
+    controller.startPeriodicSync(const Duration(minutes: 5));
   }
   runApp(GuardApp(state: state, controller: controller, navigatorKey: navigatorKey));
   unawaited(controller.start());
@@ -77,10 +78,29 @@ class GuardApp extends StatefulWidget {
   State<GuardApp> createState() => _GuardAppState();
 }
 
-class _GuardAppState extends State<GuardApp> {
+class _GuardAppState extends State<GuardApp> with WidgetsBindingObserver {
   late final GuardState _state = widget.state ?? GuardState(onboarded: true);
   late final GuardController _controller =
       widget.controller ?? GuardController(state: _state, bridge: FakeBridge(supported: const {}));
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Coming back to the app: a stale sync refreshes, the gate's journal drains,
+  /// and the permission banner reflects whatever the user changed in Settings.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_controller.resumed());
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * The live PushSender: one rung, every valid device of the user, the right
  * provider per platform. A dead token is pruned; a transient failure is thrown
- * so the job retries and the mirror covers the gap. Windows and macOS sockets
- * arrive with M5; until then those devices rely on the local mirror.
+ * so the job retries and the mirror covers the gap. Windows has no push
+ * provider without Store identity (D15): its devices rely on the scheduled
+ * toasts from the last sync and the five-minute resync.
  */
 final class DeviceRouter implements PushSender
 {
@@ -38,7 +39,7 @@ final class DeviceRouter implements PushSender
                 $id = match ($device->platform) {
                     'ios', 'macos' => $this->apns?->send($device->push_token, $message, $expiresAt),
                     'android' => $this->fcm?->send($device->push_token, $message, max(0, $expiresAt - time())),
-                    default => null, // windows: socket in M5
+                    default => null, // windows: scheduled toasts plus resync (D15)
                 };
                 $firstId ??= $id;
             } catch (PushRejected $e) {
