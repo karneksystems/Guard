@@ -83,6 +83,27 @@ class ApiClient {
     await _json(r);
   }
 
+  /// Every firm pack's header: id, name, version, verified state, account types.
+  Future<List<Map<String, dynamic>>> listPacks() async {
+    final r = await _client.get(_uri('/packs'), headers: _headers(auth: false));
+    final json = await _json(r);
+    return (json['packs'] as List? ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> getPack(String firmId) async {
+    final r = await _client.get(_uri('/packs/$firmId'), headers: _headers(auth: false));
+    return _json(r);
+  }
+
+  /// A store receipt for the server to verify. Returns the new pro_until, or null.
+  Future<DateTime?> postEntitlement({required String platform, required String plan, required String receipt}) async {
+    final r = await _client.post(_uri('/entitlement'),
+        headers: _headers(), body: jsonEncode({'platform': platform, 'plan': plan, 'receipt': receipt}));
+    final json = await _json(r);
+    final until = json['proUntil'] as String?;
+    return until == null ? null : DateTime.parse(until).toUtc();
+  }
+
   Future<void> postJournal({required String windowId, required String outcome, required DateTime atUtc}) async {
     final r = await _client.post(_uri('/journal'),
         headers: _headers(),

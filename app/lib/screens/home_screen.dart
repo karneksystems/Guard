@@ -6,6 +6,7 @@ import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
 import 'digest_screen.dart';
+import 'pack_screen.dart';
 import 'permissions_screen.dart';
 import 'tracker_screen.dart';
 
@@ -47,6 +48,19 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: Tokens.gutter),
         const PermissionBanner(),
         if (state.missingPermissions.isNotEmpty) const SizedBox(height: Tokens.gutter),
+        if (state.rulesChanged != null && state.flags.rulesChangedFlag) ...[
+          Card(
+            key: const Key('home-rules-changed'),
+            color: Tokens.statusWarn.withValues(alpha: 0.12),
+            child: ListTile(
+              title: Text('${state.packs.index[state.rulesChanged!.firmId]?.firmName ?? state.rulesChanged!.firmId}: rules changed'),
+              subtitle: Text('Pack ${state.rulesChanged!.from} to ${state.rulesChanged!.to}. Tap to read what moved.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PackScreen(firmId: state.rulesChanged!.firmId))),
+            ),
+          ),
+          const SizedBox(height: Tokens.gutter),
+        ],
         _NextWindowCard(window: next, titleFor: state.titleFor, sourceFor: state.sourceFor),
         const SizedBox(height: Tokens.gutter),
         if (weekend) ...[
@@ -61,6 +75,8 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: Tokens.gutter),
         ],
         Text('Windows ahead', style: text.titleMedium),
+        if (state.engineNotes.isNotEmpty)
+          Text(state.engineNotes.join(' · '), key: const Key('home-notes'), style: text.bodySmall?.copyWith(color: Tokens.statusWarn)),
         const SizedBox(height: 8),
         if (windows.isEmpty)
           const Text('No restricted windows on your instruments.')

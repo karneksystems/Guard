@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../features/flags.dart';
 import '../platform/platform_bridge.dart';
 import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
+import 'pack_screen.dart';
+import 'paywall_screen.dart';
 import 'permissions_screen.dart';
 import 'tracker_screen.dart';
 
@@ -42,18 +45,29 @@ class SettingsScreen extends StatelessWidget {
           onTap: () => _pick(context, 'Rule mode', s['mode'] as String? ?? 'conservative', [
             ('conservative', 'Conservative'),
             ('firm-match', pro ? 'Firm match' : 'Firm match (Pro)'),
-          ], disabled: pro ? const {} : const {'firm-match'}, onPicked: (v) => c.updateSettings({'mode': v})),
+          ], disabled: pro ? const {} : const {'firm-match'}, onPicked: (v) async {
+            if (v == 'firm-match') {
+              await _pickFirm(context, state, c);
+            } else {
+              await c.updateSettings({'mode': v});
+            }
+          }),
         ),
+        if (s['mode'] == 'firm-match' && s['firmId'] != null)
+          _Row(
+            key: const Key('setting-firm'),
+            label: 'Firm',
+            value: _firmLabel(state),
+            note: state.packs.index[s['firmId']]?.needsReverify == false ? null : 'unverified pack',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PackScreen(firmId: s['firmId'] as String))),
+          ),
         _Row(
           key: const Key('setting-window'),
           label: 'Window',
           value: '${s['windowBeforeMin']} min before · ${s['windowAfterMin']} min after',
           onTap: pro
               ? () => _pick(context, 'Window', '${s['windowBeforeMin']}', [
-                    ('2', '2 minutes'),
-                    ('3', '3 minutes'),
-                    ('5', '5 minutes'),
-                    ('10', '10 minutes'),
+                    for (final m in Flags.windowPresets) ('$m', '$m minutes'),
                   ], onPicked: (v) => c.updateSettings({'windowBeforeMin': int.parse(v), 'windowAfterMin': int.parse(v)}))
               : null,
           note: pro ? null : 'Fixed on Free',
@@ -100,10 +114,73 @@ class SettingsScreen extends StatelessWidget {
             value: state.missingPermissions.isEmpty ? 'All granted' : '${state.missingPermissions.length} missing',
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PermissionsScreen())),
           ),
+        _Row(
+          key: const Key('setting-plan'),
+          label: 'Plan',
+          value: pro ? 'Pro' : 'Free',
+          note: pro ? null : 'Pro unlocks firm packs, custom windows and hard block.',
+          onTap: pro ? null : () => Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => const PaywallScreen())),
+        ),
         const SizedBox(height: Tokens.gutter),
-        Text(pro ? 'Pro plan' : 'Free plan · Pro unlocks firm packs, custom windows and hard block.', style: text.bodySmall),
+        Text('Not affiliated with any firm. Not financial advice.', style: text.bodySmall),
       ],
     );
+  }
+
+  static String _firmLabel(GuardState state) {
+    final firmId = state.settings['firmId'] as String;
+    final entry = state.packs.index[firmId];
+    final account = entry?.accountTypes.where((a) => a.id == state.settings['accountTypeId']).firstOrNull;
+    return '${entry?.firmName ?? firmId}${account == null ? '' : ' · ${account.label}'}';
+  }
+
+  /// Firm, then account type, from the cached index. Both are needed before
+  /// the engine will run Firm match; until then it stays conservative.
+  Future<void> _pickFirm(BuildContext context, GuardState state, GuardController c) async {
+    final firms = state.packs.index.values.toList()..sort((a, b) => a.firmName.compareTo(b.firmName));
+    if (firms.isEmpty) {
+      await c.refreshPacks();
+      if (!context.mounted) return;
+      if (state.packs.index.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Packs arrive with the next sync. Try again shortly.')));
+        return;
+      }
+      return _pickFirm(context, state, c);
+    }
+    final firmId = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          Padding(padding: const EdgeInsets.all(Tokens.gutter), child: Text('Firm', style: Theme.of(ctx).textTheme.titleMedium)),
+          for (final f in firms)
+            ListTile(
+              key: Key('firm-${f.firmId}'),
+              title: Text(f.firmName),
+              subtitle: Text(f.needsReverify ? 'Unverified pack ${f.packVersion}' : 'Verified ${f.lastVerified}'),
+              onTap: () => Navigator.of(ctx).pop(f.firmId),
+            ),
+        ]),
+      ),
+    );
+    if (firmId == null || !context.mounted) return;
+    final firm = state.packs.index[firmId]!;
+    final accountId = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          Padding(padding: const EdgeInsets.all(Tokens.gutter), child: Text('Account type', style: Theme.of(ctx).textTheme.titleMedium)),
+          for (final a in firm.accountTypes)
+            ListTile(
+              key: Key('account-${a.id}'),
+              title: Text(a.label),
+              subtitle: Text(a.phase),
+              onTap: () => Navigator.of(ctx).pop(a.id),
+            ),
+        ]),
+      ),
+    );
+    if (accountId == null) return;
+    await c.selectFirm(firmId: firmId, accountTypeId: accountId);
   }
 
   static String _label(String id) => switch (id) {
@@ -145,7 +222,7 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _editInstruments(BuildContext context, GuardState state, GuardController c) async {
     final chosen = state.instruments.map((i) => i['symbol'] as String).toSet();
     const common = ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'US30', 'US500', 'USTEC', 'DE40', 'UK100', 'BTCUSD'];
-    final max = state.pro ? 50 : 2;
+    final max = state.flags.instrumentsMax;
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {

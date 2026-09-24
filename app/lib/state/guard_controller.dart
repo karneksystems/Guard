@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../billing/billing.dart';
 import '../features/tracker.dart';
+import '../packs/pack_cache.dart';
 import '../notifications/ladder_mirror.dart';
 import '../notifications/push_registrar.dart';
 import '../notifications/reminders.dart';
@@ -26,6 +28,7 @@ class GuardController {
     this.mirror,
     this.push,
     this.reminders,
+    this.billing,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
@@ -37,6 +40,7 @@ class GuardController {
   final LadderMirror? mirror;
   final PushRegistrar? push;
   final ReminderPlanner? reminders;
+  final Billing? billing;
   final DateTime Function() _now;
 
   StreamSubscription<Map<String, dynamic>>? _pushSub;
@@ -49,6 +53,8 @@ class GuardController {
       if (gated != null) state.setGatedApps(gated);
       final tracker = prefs['tracker'] as Map<String, dynamic>?;
       if (tracker != null) state.setTracker(Tracker.fromJson(tracker));
+      final packs = prefs['packs'] as Map<String, dynamic>?;
+      if (packs != null) state.setPacks(PackCache.fromJson(packs));
     }
     await refreshPermissions();
     await mirror?.scheduler.initialise();
@@ -58,6 +64,7 @@ class GuardController {
     if (cached != null) await applyPayload(cached);
     final fresh = await sync?.sync();
     if (fresh != null) await applyPayload(fresh);
+    await refreshPacks();
     await registerPushToken();
     await drainGateJournal();
   }
@@ -68,6 +75,64 @@ class GuardController {
     await mirror?.reconcile(payload);
     await pushGateSchedule();
     await refreshReminders();
+  }
+
+  /// The pack index, plus the full pack for the user's firm. A version change on
+  /// that pack raises the rules-changed flag. Network failure keeps the cache.
+  Future<void> refreshPacks() async {
+    final a = api;
+    if (a == null) return;
+    final cache = PackCache(index: {...state.packs.index}, packs: {...state.packs.packs});
+    RulesChanged? changed;
+    try {
+      final rows = await a.listPacks();
+      cache.index
+        ..clear()
+        ..addEntries(rows.map(PackIndexEntry.fromJson).map((e) => MapEntry(e.firmId, e)));
+      final firmId = state.settings['firmId'] as String?;
+      if (firmId != null && cache.index.containsKey(firmId)) {
+        final cached = cache.packs[firmId];
+        if (cached == null || cached['packVersion'] != cache.index[firmId]!.packVersion) {
+          changed = cache.put(await a.getPack(firmId));
+        }
+      }
+    } on Exception {
+      return; // the cache stands
+    }
+    state.setPacks(cache, changed: changed);
+    await store?.savePrefs({'packs': cache.toJson()});
+    await pushGateSchedule();
+    await refreshReminders();
+  }
+
+  /// Firm match: pick the firm and account type, fetch the pack, recompute.
+  Future<void> selectFirm({required String firmId, required String accountTypeId}) async {
+    await updateSettings({'mode': 'firm-match', 'firmId': firmId, 'accountTypeId': accountTypeId});
+    await refreshPacks();
+  }
+
+  /// Buy or restore through the store, then let the server verify. Returns
+  /// true when the server granted Pro.
+  Future<bool> upgrade(Plan plan, {bool restore = false}) async {
+    final b = billing;
+    final a = api;
+    if (b == null) return false;
+    final purchases = restore ? await b.restore() : [?await b.buy(plan)];
+    if (purchases.isEmpty) return false;
+    if (a == null || a.token == null) return false;
+    for (final p in purchases) {
+      try {
+        final until = await a.postEntitlement(platform: p.platform, plan: p.plan.name, receipt: p.receipt);
+        if (until != null) {
+          final fresh = await sync?.sync();
+          if (fresh != null) await applyPayload(fresh);
+          return state.pro;
+        }
+      } on Exception {
+        // Try the next receipt; the store keeps the purchase either way.
+      }
+    }
+    return false;
   }
 
   /// Digest, weekend and inactivity reminders follow the windows and the tracker.

@@ -41,6 +41,10 @@ return [
         'service_account' => env('FCM_SERVICE_ACCOUNT'),
     ],
 
+    // Which receipt verifier to bind: reject (default, nothing gets Pro), fake
+    // (dev and tests), or, once the store accounts exist, apple/google/microsoft.
+    'receipt_verifier' => env('GUARD_RECEIPT_VERIFIER', 'reject'),
+
     // How long after fire_at a rung is still worth delivering. After this the
     // local mirror has fired and a late push would only repeat it.
     'push_expiry_grace_seconds' => 600,

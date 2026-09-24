@@ -13,6 +13,9 @@ use App\Packs\PackRepository;
 use App\Push\ApnsSender;
 use App\Push\DeviceRouter;
 use App\Push\FcmSender;
+use App\Billing\FakeVerifier;
+use App\Billing\ReceiptVerifier;
+use App\Billing\RejectingVerifier;
 use App\Push\LogPushSender;
 use App\Push\PushSender;
 use Illuminate\Support\Facades\Event;
@@ -32,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
                 ),
                 default => throw new RuntimeException('Unknown calendar vendor ' . config('guard.calendar_vendor')),
             };
+        });
+
+        $this->app->singleton(ReceiptVerifier::class, fn () => match ((string) config('guard.receipt_verifier')) {
+            'fake' => new FakeVerifier(),
+            default => new RejectingVerifier(),
         });
 
         $this->app->singleton(PackRepository::class, fn () => new PackRepository((string) config('guard.packs_source_dir')));

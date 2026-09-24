@@ -34,6 +34,7 @@ final class SyncController extends Controller
         return response()->json([
             'serverTimeUtc' => $now->format('Y-m-d\TH:i:s\Z'),
             'pro' => $user->isPro(),
+            'proUntil' => $user->pro_until?->utc()->format('Y-m-d\TH:i:s\Z'),
             'settings' => $user->settings,
             'instruments' => $user->instruments->map(fn (Instrument $i) => ['symbol' => $i->symbol, 'basket' => $i->basket_currencies])->values(),
             'events' => CalendarEvent::query()

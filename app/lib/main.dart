@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'billing/billing.dart';
 import 'desktop/desktop_shell.dart';
 import 'gate/desktop_gate.dart';
 import 'notifications/ladder_mirror.dart';
@@ -49,6 +50,9 @@ Future<void> main() async {
     reminders: ReminderPlanner(scheduler),
     // Firebase registration replaces this once the project's config files exist.
     push: FakeRegistrar(),
+    // Store billing replaces this with the store accounts; the backend rejects
+    // fake receipts unless GUARD_RECEIPT_VERIFIER=fake.
+    billing: FakeBilling(),
   );
   final navigatorKey = GlobalKey<NavigatorState>();
   if (DesktopShell.isDesktop) {

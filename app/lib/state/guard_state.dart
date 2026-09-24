@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:rule_engine/rule_engine.dart';
 
 import '../data/sample_data.dart';
+import '../features/flags.dart';
 import '../features/tracker.dart';
+import '../packs/pack_cache.dart';
 import '../platform/platform_bridge.dart';
 import '../sync/sync_payload.dart';
 
@@ -10,9 +12,11 @@ import '../sync/sync_payload.dart';
 /// in tests, the sample data. Windows are always computed on the device by the
 /// engine, so the gate works with the network off.
 class GuardState extends ChangeNotifier {
-  GuardState({this._payload, this._userId = 'device', this._onboarded = false});
+  GuardState({this._payload, this._userId = 'device', this._onboarded = false, DateTime Function()? now})
+      : _now = now ?? DateTime.now;
 
   SyncPayload? _payload;
+  final DateTime Function() _now;
   final String _userId;
   bool _onboarded;
 
@@ -22,10 +26,34 @@ class GuardState extends ChangeNotifier {
   Map<GuardPermission, bool> _permissions = const {};
   final List<GateOutcome> _journal = [];
   Tracker _tracker = const Tracker();
+  PackCache _packs = PackCache();
+  RulesChanged? _rulesChanged;
+  List<String> _engineNotes = const [];
 
   SyncPayload? get payload => _payload;
   bool get isSample => _payload == null;
-  bool get pro => _payload?.pro ?? false;
+  /// docs/FREE-PRO-FLAGS.md: fresh server word wins, stale word gets a grace.
+  Flags get flags {
+    final p = _payload;
+    if (p == null) return Flags.free;
+    return Flags.derive(serverPro: p.pro, proUntil: p.proUntil, fetchedAt: p.fetchedAtUtc, now: _now().toUtc());
+  }
+
+  bool get pro => flags.pro;
+
+  PackCache get packs => _packs;
+  RulesChanged? get rulesChanged => _rulesChanged;
+
+  /// What the engine said about the last computation ("using the calendar, not
+  /// the firm's list", "pack unverified", ...).
+  List<String> get engineNotes => _engineNotes;
+
+  /// The pack behind Firm match, when the mode is on and the pack is cached.
+  Map<String, dynamic>? get activePack {
+    if (settings['mode'] != 'firm-match') return null;
+    final id = settings['firmId'] as String?;
+    return id == null ? null : _packs.packs[id];
+  }
   bool get onboarded => _onboarded;
 
   /// Local edits win over the last payload until the next sync replaces both.
@@ -71,13 +99,29 @@ class GuardState extends ChangeNotifier {
       },
       'instruments': instruments,
     };
-    // Firm match needs packs, which arrive with M8; until then compute conservatively.
     input.remove('packId');
     input.remove('accountTypeId');
-    if (input['settings']['mode'] == 'firm-match') {
-      input['settings'] = {...input['settings'] as Map<String, dynamic>, 'mode': 'conservative'};
+    final notes = <String>[];
+    if (settings['mode'] == 'firm-match') {
+      final pack = activePack;
+      final account = settings['accountTypeId'] as String?;
+      final hasAccount = pack != null &&
+          account != null &&
+          (pack['accountTypes'] as List).cast<Map<String, dynamic>>().any((a) => a['id'] == account);
+      if (hasAccount && flags.firmMatch) {
+        input['packId'] = settings['firmId'];
+        input['accountTypeId'] = account;
+      } else {
+        input['settings'] = {...input['settings'] as Map<String, dynamic>, 'mode': 'conservative'};
+        notes.add(!flags.firmMatch
+            ? 'Firm match needs Pro: using conservative'
+            : pack == null
+                ? 'pack not downloaded yet: using conservative'
+                : 'pick an account type: using conservative');
+      }
     }
-    final result = RuleEngine((_) => throw StateError('packs arrive with M8')).computeWindows(input);
+    final result = RuleEngine((id) => _packs.packs[id] ?? (throw StateError('no pack $id'))).computeWindows(input);
+    _engineNotes = [...notes, ...result.notes];
     return [...result.windows]..sort((a, b) => a.opensAtUtc.compareTo(b.opensAtUtc));
   }
 
@@ -112,6 +156,17 @@ class GuardState extends ChangeNotifier {
 
   void markOnboarded() {
     _onboarded = true;
+    notifyListeners();
+  }
+
+  void setPacks(PackCache packs, {RulesChanged? changed}) {
+    _packs = packs;
+    if (changed != null) _rulesChanged = changed;
+    notifyListeners();
+  }
+
+  void clearRulesChanged() {
+    _rulesChanged = null;
     notifyListeners();
   }
 

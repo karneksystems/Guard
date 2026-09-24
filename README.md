@@ -110,5 +110,18 @@ the ladder's range so the two schedulers never cancel each other. The source
 strip shows on every window. A viewed journal entry can be self-reported as a
 trade.
 
+M8, Pro, the half that needs no store account: the flag set in
+`lib/features/flags.dart` derives from the server's word with the seven-day grace.
+Packs come down on every sync (index for all firms, the full pack for the
+user's firm) and are cached in prefs, so Firm match runs on the device offline.
+A pack version change raises the rules-changed flag on Home with the changelog
+behind it. Settings picks firm and account type from the index; the pack screen
+shows version, verified state, source, the rule and the changelog. The paywall
+is one SKU behind a `Billing` interface, and `POST /api/entitlement` verifies a
+receipt through `ReceiptVerifier`, which rejects everything until the store
+verifiers exist (`GUARD_RECEIPT_VERIFIER=fake` for development). Still to do in
+M8: StoreKit, Play Billing and Microsoft Store behind `Billing`, the three
+verifiers, a human reading the five packs' sources, ads.
+
 Not yet: Drift for the journal and history, the iOS shield (M7), fonts bundled,
 MSIX packaging and signing, store builds. See `docs/MILESTONES.md`.

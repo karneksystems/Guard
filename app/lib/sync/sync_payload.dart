@@ -4,6 +4,7 @@ class SyncPayload {
   SyncPayload({
     required this.serverTimeUtc,
     required this.pro,
+    this.proUntil,
     required this.settings,
     required this.instruments,
     required this.events,
@@ -17,6 +18,7 @@ class SyncPayload {
     return SyncPayload(
       serverTimeUtc: json['serverTimeUtc'] as String,
       pro: json['pro'] == true,
+      proUntil: json['proUntil'] == null ? null : DateTime.tryParse(json['proUntil'] as String)?.toUtc(),
       settings: {
         'mode': settings['mode'] ?? 'conservative',
         'protection': settings['protection'] ?? 'soft-gate',
@@ -36,6 +38,7 @@ class SyncPayload {
 
   final String serverTimeUtc;
   final bool pro;
+  final DateTime? proUntil;
   final Map<String, dynamic> settings;
   final List<Map<String, dynamic>> instruments;
   final List<Map<String, dynamic>> events;
@@ -62,6 +65,7 @@ class SyncPayload {
   Map<String, dynamic> toJson() => {
         'serverTimeUtc': serverTimeUtc,
         'pro': pro,
+        'proUntil': proUntil?.toIso8601String(),
         'settings': {
           'mode': settings['mode'],
           'protection': settings['protection'],

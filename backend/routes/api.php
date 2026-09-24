@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\PackController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Middleware\DeviceAuth;
@@ -16,4 +17,5 @@ Route::middleware(DeviceAuth::class)->group(function () {
     Route::put('/settings', [SyncController::class, 'updateSettings']);
     Route::put('/instruments', [SyncController::class, 'replaceInstruments']);
     Route::post('/journal', [SyncController::class, 'journal']);
+    Route::post('/entitlement', [EntitlementController::class, 'store']);
 });
