@@ -222,8 +222,10 @@ class MethodChannelBridge implements PlatformBridge {
   }
 
   @override
-  bool get hasGate =>
-      _platform == TargetPlatform.android || _platform == TargetPlatform.windows || _platform == TargetPlatform.iOS;
+  bool get hasGate => switch (_platform) {
+        TargetPlatform.android || TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.iOS => true,
+        _ => false,
+      };
 
   @override
   bool get usesSystemPicker => _platform == TargetPlatform.iOS;

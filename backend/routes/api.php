@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\PackController;
@@ -18,4 +19,5 @@ Route::middleware(DeviceAuth::class)->group(function () {
     Route::put('/instruments', [SyncController::class, 'replaceInstruments']);
     Route::post('/journal', [SyncController::class, 'journal']);
     Route::post('/entitlement', [EntitlementController::class, 'store']);
+    Route::delete('/account', [AccountController::class, 'destroy']);
 });

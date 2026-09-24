@@ -154,6 +154,20 @@ class GuardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// After a deletion request: back to a fresh install.
+  void reset() {
+    _payload = null;
+    _localSettings = null;
+    _localInstruments = null;
+    _gatedAppIds = const ['net.metaquotes.metatrader5'];
+    _journal.clear();
+    _tracker = const Tracker();
+    _packs = PackCache();
+    _rulesChanged = null;
+    _onboarded = false;
+    notifyListeners();
+  }
+
   void markOnboarded() {
     _onboarded = true;
     notifyListeners();

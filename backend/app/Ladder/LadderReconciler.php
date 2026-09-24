@@ -38,7 +38,11 @@ final class LadderReconciler
         $ladder = $engine->computeLadder($input['userId'], $result['windows']);
 
         $wanted = [];
+        $quiet = QuietHours::fromSettings($user->settings?->quiet_hours, $user->tz ?? 'UTC');
         foreach ($ladder as $rung) {
+            if ($quiet !== null && $quiet->silences($rung['kind'], new DateTimeImmutable($rung['fireAtUtc'], new DateTimeZone('UTC')))) {
+                continue; // PUSH-ARCHITECTURE: only T-5, T-1 and open fire inside quiet hours
+            }
             $wanted[$rung['alertId']] = $rung;
         }
 

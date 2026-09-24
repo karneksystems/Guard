@@ -104,6 +104,13 @@ class ApiClient {
     return until == null ? null : DateTime.parse(until).toUtc();
   }
 
+  /// The privacy policy's deletion request. The token is dead afterwards.
+  Future<void> deleteAccount() async {
+    final r = await _client.delete(_uri('/account'), headers: _headers());
+    await _json(r);
+    token = null;
+  }
+
   Future<void> postJournal({required String windowId, required String outcome, required DateTime atUtc}) async {
     final r = await _client.post(_uri('/journal'),
         headers: _headers(),

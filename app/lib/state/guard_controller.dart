@@ -80,7 +80,7 @@ class GuardController {
   /// A new payload: state, the local mirror of its ladder, the platform gate.
   Future<void> applyPayload(SyncPayload payload) async {
     state.update(payload);
-    await mirror?.reconcile(payload);
+    await mirror?.reconcile(payload, quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
     await pushGateSchedule();
     await refreshReminders();
   }
@@ -277,6 +277,9 @@ class GuardController {
     state.applySettings(patch);
     await pushGateSchedule();
     if (patch.containsKey('digestLocalTime') || patch.containsKey('windowBeforeMin')) await refreshReminders();
+    if (patch.containsKey('quietHours') && state.payload != null) {
+      await mirror?.reconcile(state.payload!, quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
+    }
     final a = api;
     if (a == null || a.token == null) return;
     try {
@@ -310,6 +313,27 @@ class GuardController {
     await store?.savePrefs({'onboarded': true});
   }
 
+  /// Delete the server record, wipe the device, start over. Returns false when
+  /// the server could not be reached; nothing is wiped in that case.
+  Future<bool> deleteEverything() async {
+    final a = api;
+    if (a != null && a.token != null) {
+      try {
+        await a.deleteAccount();
+      } on Exception {
+        return false;
+      }
+    }
+    await store?.clear();
+    if (bridge.hasGate) {
+      await bridge.scheduleGateWindows(windows: const [], gatedAppIds: const [], protection: 'warn-only');
+    }
+    state.reset();
+    await mirror?.reconcile(SyncPayload.fromJson(const {'serverTimeUtc': '1970-01-01T00:00:00Z', 'settings': <String, dynamic>{}}));
+    await refreshReminders();
+    return true;
+  }
+
   /// Settings travel in snake_case on the wire (backend/routes/api.php).
   static Map<String, dynamic> _toWire(Map<String, dynamic> patch) => {
         if (patch.containsKey('mode')) 'mode': patch['mode'],
@@ -319,6 +343,7 @@ class GuardController {
         if (patch.containsKey('firmId')) 'firm_id': patch['firmId'],
         if (patch.containsKey('accountTypeId')) 'account_type_id': patch['accountTypeId'],
         if (patch.containsKey('digestLocalTime')) 'digest_local_time': patch['digestLocalTime'],
+        if (patch.containsKey('quietHours')) 'quiet_hours': patch['quietHours'],
       };
 }
 

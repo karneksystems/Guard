@@ -8,14 +8,37 @@ import 'rung_words.dart';
 /// arrives, its mirror is cancelled. Where cancellation can't happen in time
 /// the mirror fires as a repeat, which for an alarm-style product is fine.
 class LadderMirror {
-  LadderMirror(this.scheduler, {this.grace = const Duration(seconds: 20)});
+  LadderMirror(this.scheduler, {this.grace = const Duration(seconds: 20), Duration? utcOffset}) : _offset = utcOffset;
 
   final NotificationScheduler scheduler;
   final Duration grace;
+  final Duration? _offset;
+
+  /// Rungs that fire inside quiet hours regardless (PUSH-ARCHITECTURE).
+  static const alwaysFire = {'t-5', 't-1', 'open'};
+
+  /// True when [fireAtUtc] falls in the local quiet range {start, end} (HH:mm).
+  bool inQuietHours(Map<String, dynamic>? quiet, DateTime fireAtUtc) {
+    if (quiet == null) return false;
+    final start = _minutes(quiet['start'] as String?);
+    final end = _minutes(quiet['end'] as String?);
+    if (start == null || end == null || start == end) return false;
+    final local = fireAtUtc.toUtc().add(_offset ?? DateTime.now().timeZoneOffset);
+    final m = local.hour * 60 + local.minute;
+    return start < end ? (m >= start && m < end) : (m >= start || m < end);
+  }
+
+  static int? _minutes(String? hhmm) {
+    if (hhmm == null) return null;
+    final p = hhmm.split(':');
+    final h = int.tryParse(p[0]);
+    final i = p.length > 1 ? int.tryParse(p[1]) : 0;
+    return h == null || i == null ? null : h * 60 + i;
+  }
 
   /// Bring the OS schedule in line with the payload's ladder. Returns the
   /// number scheduled and cancelled, mostly for logs and tests.
-  Future<({int scheduled, int cancelled})> reconcile(SyncPayload payload, {DateTime? now}) async {
+  Future<({int scheduled, int cancelled})> reconcile(SyncPayload payload, {DateTime? now, Map<String, dynamic>? quietHours}) async {
     now ??= DateTime.now().toUtc();
     final windowsById = {for (final w in payload.windows) w['windowId'] as String: w};
 
@@ -24,6 +47,8 @@ class LadderMirror {
       final alertId = rung['alertId'] as String;
       final fireAt = DateTime.parse(rung['fireAtUtc'] as String).toUtc();
       if (fireAt.isBefore(now)) continue;
+      final kind = rung['kind'] as String;
+      if (!alwaysFire.contains(kind) && inQuietHours(quietHours, fireAt)) continue;
       final window = windowsById[rung['windowId']];
       final instrument = window?['instrument'] as String? ?? 'your instrument';
       final reasons = (window?['reasons'] as List?)?.cast<String>() ?? const [];

@@ -11,7 +11,8 @@ void main() {
     expect(b.usesSystemPicker, isTrue);
     expect(b.supportedPermissions, {GuardPermission.notifications, GuardPermission.screenTime});
     expect(MethodChannelBridge(platform: TargetPlatform.android).usesSystemPicker, isFalse);
-    expect(MethodChannelBridge(platform: TargetPlatform.macOS).hasGate, isFalse);
+    expect(MethodChannelBridge(platform: TargetPlatform.macOS).hasGate, isTrue);
+    expect(MethodChannelBridge(platform: TargetPlatform.linux).hasGate, isFalse);
   });
 
   test('pickApps and scheduleWindows go over guard/gate with the same shapes as Android', () async {

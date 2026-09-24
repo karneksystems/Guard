@@ -102,6 +102,13 @@ class SettingsScreen extends StatelessWidget {
           },
         ),
         _Row(
+          key: const Key('setting-quiet'),
+          label: 'Quiet hours',
+          value: s['quietHours'] == null ? 'Off' : '${(s['quietHours'] as Map)['start']} to ${(s['quietHours'] as Map)['end']}',
+          note: 'Only the 5 minute, 1 minute and open alerts fire inside them.',
+          onTap: () => _editQuietHours(context, s, c),
+        ),
+        _Row(
           key: const Key('setting-tracker'),
           label: 'Tracker and reminders',
           value: state.tracker.dailyLossLimit == null ? 'Not set' : 'Limit ${state.tracker.currency}${state.tracker.dailyLossLimit!.toStringAsFixed(0)}',
@@ -123,8 +130,64 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: Tokens.gutter),
         Text('Not affiliated with any firm. Not financial advice.', style: text.bodySmall),
+        const SizedBox(height: Tokens.gutter),
+        TextButton(
+          key: const Key('setting-delete'),
+          onPressed: () => _deleteEverything(context, c),
+          child: const Text('Delete my data'),
+        ),
       ],
     );
+  }
+
+  Future<void> _editQuietHours(BuildContext context, Map<String, dynamic> s, GuardController c) async {
+    final current = s['quietHours'] as Map?;
+    TimeOfDay parse(String? v, TimeOfDay fallback) {
+      if (v == null) return fallback;
+      final p = v.split(':');
+      return TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1]));
+    }
+    String fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(key: const Key('quiet-set'), title: const Text('Set quiet hours'), onTap: () => Navigator.of(ctx).pop('set')),
+          ListTile(key: const Key('quiet-off'), title: const Text('Off'), onTap: () => Navigator.of(ctx).pop('off')),
+        ]),
+      ),
+    );
+    if (choice == 'off') {
+      await c.updateSettings({'quietHours': null});
+      return;
+    }
+    if (choice != 'set' || !context.mounted) return;
+    final start = await showTimePicker(context: context, initialTime: parse(current?['start'] as String?, const TimeOfDay(hour: 23, minute: 0)), helpText: 'Quiet from');
+    if (start == null || !context.mounted) return;
+    final end = await showTimePicker(context: context, initialTime: parse(current?['end'] as String?, const TimeOfDay(hour: 6, minute: 0)), helpText: 'Quiet until');
+    if (end == null) return;
+    await c.updateSettings({'quietHours': {'start': fmt(start), 'end': fmt(end)}});
+  }
+
+  Future<void> _deleteEverything(BuildContext context, GuardController c) async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete my data?'),
+        content: const Text('Removes your settings, instruments, journal and device from the server and wipes this app. Pro stays with your store account.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          FilledButton(key: const Key('delete-confirm'), onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    final ok = await c.deleteEverything();
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not reach the server. Nothing was deleted.')));
+    }
   }
 
   static String _firmLabel(GuardState state) {

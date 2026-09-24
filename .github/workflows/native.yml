@@ -36,10 +36,11 @@ jobs:
       - run: flutter build windows --debug
         working-directory: app
 
-  # Compiles the Runner target, which holds the Screen Time bridge and the
-  # shared store. The three extension targets are added in Xcode
-  # (app/ios/SCREEN-TIME-SETUP.md) and compile there.
-  ios-build:
+  # One Mac runner for both Apple targets. iOS compiles the Runner target,
+  # which holds the Screen Time bridge and the shared store; the three
+  # extension targets are added in Xcode (app/ios/SCREEN-TIME-SETUP.md) and
+  # compile there. macOS compiles the NSWorkspace gate watcher.
+  apple-build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +50,8 @@ jobs:
       - run: flutter pub get
         working-directory: app
       - run: flutter build ios --debug --no-codesign
+        working-directory: app
+      - run: flutter build macos --debug
         working-directory: app
 
   # On demand: an unsigned MSIX as a build artifact. Signing lands with the

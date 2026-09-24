@@ -13,6 +13,9 @@ abstract class LocalStore {
   Future<void> saveCredentials({required String deviceId, required String token});
   Future<Map<String, dynamic>> prefs();
   Future<void> savePrefs(Map<String, dynamic> patch);
+
+  /// Everything gone: payload, credentials, prefs. The deletion request.
+  Future<void> clear();
 }
 
 /// In-memory store for widget tests, which run under a fake clock where real
@@ -40,6 +43,13 @@ class MemoryStore implements LocalStore {
 
   @override
   Future<void> savePrefs(Map<String, dynamic> patch) async => _prefs = {..._prefs, ...patch};
+
+  @override
+  Future<void> clear() async {
+    _payload = null;
+    _creds = null;
+    _prefs = {};
+  }
 }
 
 /// File-backed store: JSON files in a directory the platform gives us. Drift
@@ -95,6 +105,13 @@ class SyncStore implements LocalStore {
   Future<void> savePrefs(Map<String, dynamic> patch) async {
     final merged = {...await prefs(), ...patch};
     await _writeAtomic(_prefsFile, merged);
+  }
+
+  @override
+  Future<void> clear() async {
+    for (final f in [_payloadFile, _credsFile, _prefsFile]) {
+      if (await f.exists()) await f.delete();
+    }
   }
 
   Future<void> _writeAtomic(File file, Map<String, dynamic> json) async {

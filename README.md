@@ -140,5 +140,10 @@ job (`native.yml`, workflow_dispatch), and drafts of the privacy policy, terms
 and Play declarations under `docs/legal/` and `docs/PLAY-DECLARATIONS.md` for
 the user to review before M9.
 
+Also: the macOS gate (`macos/Runner/GateWatcher.swift`, NSWorkspace activation
+events, the same channel contract as Windows, compiled by the apple-build job),
+quiet hours on the server and in the local mirror (only T-5, T-1 and open fire
+inside them), and "Delete my data" in Settings backed by `DELETE /api/account`.
+
 Not yet: MSIX signing, store builds, the store billing SDKs, ads. See
 `docs/MILESTONES.md`.

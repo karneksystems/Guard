@@ -63,7 +63,9 @@ final class SyncController extends Controller
             'window_after_min' => ['sometimes', 'integer', 'min:0', 'max:1440'],
             'firm_id' => ['sometimes', 'nullable', 'regex:/^[a-z0-9-]{2,40}$/'],
             'account_type_id' => ['sometimes', 'nullable', 'regex:/^[a-z0-9-]{2,40}$/'],
-            'quiet_hours' => ['sometimes', 'nullable', 'array'],
+            'quiet_hours' => ['sometimes', 'nullable', 'array:start,end'],
+            'quiet_hours.start' => ['required_with:quiet_hours', 'date_format:H:i'],
+            'quiet_hours.end' => ['required_with:quiet_hours', 'date_format:H:i'],
             'digest_local_time' => ['sometimes', 'date_format:H:i'],
         ]);
 
