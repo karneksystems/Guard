@@ -17,6 +17,8 @@ log. These files move to the product's own private repo once the name clears (D3
 | MILESTONES.md | Build order with exit criteria and honest durations |
 | CALENDAR-VENDORS.md | Vendor pricing, the cost curve, and the evaluation plan |
 | APPLE-ENTITLEMENT-REQUEST.md | Text for the Family Controls request, file it now |
+| NEXT-STEPS.md | What only the account holder can do next, in unblocking order |
+| DEPLOY.md | Backend environment, Horizon supervisors, cron, first deploy |
 | PLAY-DECLARATIONS.md | Console wording for specialUse, full-screen intent, usage access, overlay, plus the video and data-safety answers |
 | legal/PRIVACY.md, legal/TERMS.md | Drafts for review before M9. Say exactly what the server holds and what never leaves the device |
 | schema/ | Pack JSON Schema and the validator CI runs (`python3 schema/validate_packs.py`) |

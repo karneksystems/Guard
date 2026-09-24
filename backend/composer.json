@@ -9,6 +9,7 @@
         "php": "^8.3",
         "karnek/rule-engine": "@dev",
         "laravel/framework": "^13.17",
+        "laravel/horizon": "^5.50",
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
