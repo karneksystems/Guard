@@ -50,6 +50,8 @@ class GateWatcher {
   std::string protection_ = "soft-gate";
   long long viewing_until_ms_ = 0;
   long long last_shown_ms_ = 0;
+  WINDOWPLACEMENT saved_placement_{};
+  bool have_saved_placement_ = false;
 };
 
 #endif  // RUNNER_GATE_WATCHER_H_

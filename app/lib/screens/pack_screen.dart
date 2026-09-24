@@ -23,7 +23,7 @@ class PackScreen extends StatelessWidget {
         ? null
         : (pack['accountTypes'] as List).cast<Map<String, dynamic>>().where((a) => a['id'] == accountId).firstOrNull;
     final rule = account?['newsRule'] as Map<String, dynamic>?;
-    final unverified = (pack?['needsReverify'] ?? entry?.needsReverify ?? true) == true;
+    final unverified = pack?['needsReverify'] == true || (entry?.needsReverify ?? pack == null);
 
     return Scaffold(
       appBar: AppBar(title: Text(entry?.firmName ?? pack?['firmName'] as String? ?? firmId)),

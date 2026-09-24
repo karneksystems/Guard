@@ -21,6 +21,8 @@ class Flags {
     required DateTime? fetchedAt,
     required DateTime now,
   }) {
+    // A clock behind the last fetch is a rolled-back clock: no grace for that.
+    if (fetchedAt != null && now.isBefore(fetchedAt.subtract(const Duration(minutes: 5)))) return free;
     if (fetchedAt != null && now.difference(fetchedAt) <= fresh) {
       return serverPro ? proFlags : free;
     }

@@ -88,7 +88,7 @@ void GateWatcher::HandleCall(
 
   if (name == "scheduleWindows") {
     windows_.clear();
-    gated_.clear();
+    std::set<std::string> incoming;
     if (args) {
       if (auto* list = Get(*args, "windows")) {
         if (auto* l = std::get_if<flutter::EncodableList>(list)) {
@@ -110,12 +110,14 @@ void GateWatcher::HandleCall(
           for (const auto& item : *l) {
             auto s = AsString(item);
             std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            if (!s.empty()) gated_.insert(s);
+            if (!s.empty()) incoming.insert(s);
           }
         }
       }
       if (auto* p = Get(*args, "protection")) protection_ = AsString(*p);
     }
+    // An empty list never ungates everything by accident; the last set stands.
+    if (!incoming.empty()) gated_ = std::move(incoming);
     result->Success(flutter::EncodableValue(static_cast<int64_t>(windows_.size())));
     return;
   }
@@ -217,6 +219,12 @@ void GateWatcher::Tick() {
 }
 
 void GateWatcher::RaiseGate(HWND target) {
+  // Remember where the window lived so LowerGate can put it back.
+  if (!have_saved_placement_) {
+    saved_placement_.length = sizeof(WINDOWPLACEMENT);
+    have_saved_placement_ = GetWindowPlacement(host_, &saved_placement_) != 0;
+  }
+
   // Put the Flutter window on the trading app's monitor, full size, topmost.
   HMONITOR mon = MonitorFromWindow(target && IsWindow(target) ? target : host_, MONITOR_DEFAULTTONEAREST);
   MONITORINFO mi{sizeof(MONITORINFO)};
@@ -227,17 +235,21 @@ void GateWatcher::RaiseGate(HWND target) {
   SetWindowPos(host_, HWND_TOPMOST, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
                SWP_SHOWWINDOW);
 
-  // Windows only lets the last-input thread take the foreground. Borrow it.
-  DWORD fg_thread = GetWindowThreadProcessId(GetForegroundWindow(), nullptr);
-  DWORD me = GetCurrentThreadId();
-  if (fg_thread && fg_thread != me) AttachThreadInput(fg_thread, me, TRUE);
+  // Topmost and shown is what matters; foreground is best effort. No
+  // AttachThreadInput: it can block on a trading app busy on a news spike,
+  // and focus must land on the Flutter child view, which WM_ACTIVATE does.
   SetForegroundWindow(host_);
   BringWindowToTop(host_);
-  SetFocus(host_);
-  if (fg_thread && fg_thread != me) AttachThreadInput(fg_thread, me, FALSE);
 }
 
+// Back to the tray at the old size, not a monitor-sized window in the taskbar.
 void GateWatcher::LowerGate() {
   SetWindowPos(host_, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-  ShowWindow(host_, SW_MINIMIZE);
+  if (have_saved_placement_) {
+    saved_placement_.showCmd = SW_HIDE;
+    SetWindowPlacement(host_, &saved_placement_);
+    have_saved_placement_ = false;
+  } else {
+    ShowWindow(host_, SW_HIDE);
+  }
 }

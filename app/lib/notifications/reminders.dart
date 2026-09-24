@@ -7,6 +7,9 @@ import 'notification_scheduler.dart';
 /// leaves them alone and this planner never touches anything below.
 const int kReminderIdBase = 0x10000000;
 
+/// Ids at or above this belong to the debug test window; nobody else cancels them.
+const int kTestIdBase = 0x20000000;
+
 const int _digestBase = kReminderIdBase + 1000;
 const int _weekendId = kReminderIdBase + 1;
 const int _inactivityId = kReminderIdBase + 2;
@@ -20,11 +23,21 @@ class ReminderPlanner {
   final NotificationScheduler scheduler;
   final Duration? _offset;
 
-  Duration get offset => _offset ?? DateTime.now().timeZoneOffset;
-
   /// Local wall time as a UTC-flagged DateTime, so the arithmetic is plain.
-  DateTime local(DateTime utc) => utc.toUtc().add(offset);
-  DateTime toUtc(DateTime localAsUtc) => localAsUtc.subtract(offset);
+  /// With no injected offset the platform's zone decides, per date, so a DST
+  /// change between now and the reminder does not shift it by an hour.
+  DateTime local(DateTime utc) {
+    final o = _offset;
+    if (o != null) return utc.toUtc().add(o);
+    final l = utc.toLocal();
+    return DateTime.utc(l.year, l.month, l.day, l.hour, l.minute, l.second);
+  }
+
+  DateTime toUtc(DateTime localAsUtc) {
+    final o = _offset;
+    if (o != null) return localAsUtc.subtract(o);
+    return DateTime(localAsUtc.year, localAsUtc.month, localAsUtc.day, localAsUtc.hour, localAsUtc.minute, localAsUtc.second).toUtc();
+  }
 
   List<ScheduledNotification> plan({
     required List<Window> windows,
@@ -125,7 +138,7 @@ class ReminderPlanner {
     };
     var cancelled = 0;
     for (final id in await scheduler.pendingIds()) {
-      if (id < kReminderIdBase || wanted.containsKey(id)) continue;
+      if (id < kReminderIdBase || id >= kTestIdBase || wanted.containsKey(id)) continue;
       await scheduler.cancel(id);
       cancelled++;
     }

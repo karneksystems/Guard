@@ -28,12 +28,18 @@ final class GuardMonitor: DeviceActivityMonitor {
         }
     }
 
-    /// A view's sixty seconds of use are up.
+    /// A view's minute of use is up. Thresholds are cumulative over the
+    /// interval, so a second view may be shorter than a minute; the shield
+    /// comes back regardless of what the active set says, since that set can
+    /// lag a re-registration.
     override func eventDidReachThreshold(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
         super.eventDidReachThreshold(event, activity: activity)
-        if GateShared.activeWindowIds.contains(activity.rawValue) {
-            applyShield()
+        var active = GateShared.activeWindowIds
+        if !active.contains(activity.rawValue) {
+            active.append(activity.rawValue)
+            GateShared.activeWindowIds = active
         }
+        applyShield()
     }
 
     private func applyShield() {

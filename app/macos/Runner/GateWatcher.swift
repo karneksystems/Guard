@@ -21,6 +21,9 @@ final class GateWatcher {
     private var viewingUntilMs: Int64 = 0
     private var lastShownMs: Int64 = 0
     private var observers: [NSObjectProtocol] = []
+    private var timer: Timer?
+    private var savedFrame: NSRect?
+    private var armed = false
 
     private static let known: [(id: String, label: String)] = [
         ("net.metaquotes.metatrader5", "MetaTrader 5"),
@@ -36,13 +39,30 @@ final class GateWatcher {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.didLaunchApplicationNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
-                self?.appCameForward(note)
+                guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+                self?.consider(app)
             })
+        }
+        // The trader may already be in MT5 when a window opens or a view runs out:
+        // a one-second check of the frontmost app covers what notifications miss.
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let canAct = self.openWindow(at: Self.nowMs()) != nil && Self.nowMs() >= self.viewingUntilMs
+            if canAct && !self.armed, let front = NSWorkspace.shared.frontmostApplication {
+                self.consider(front)
+            }
+            self.armed = canAct
         }
     }
 
     deinit {
+        timer?.invalidate()
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+    }
+
+    private func openWindow(at now: Int64) -> Window? {
+        guard protection != "warn-only" else { return nil }
+        return windows.first { now >= $0.opensAtMs && now < $0.closesAtMs }
     }
 
     private static func nowMs() -> Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
@@ -64,7 +84,8 @@ final class GateWatcher {
                 guard let id = w["windowId"] as? String, let o = w["opensAtMs"] as? NSNumber, let c = w["closesAtMs"] as? NSNumber else { return nil }
                 return Window(id: id, opensAtMs: o.int64Value, closesAtMs: c.int64Value)
             }
-            gated = Set((args["gatedPackages"] as? [String] ?? []).map { $0.lowercased() })
+            let incoming = Set((args["gatedPackages"] as? [String] ?? []).map { $0.lowercased() })
+            if !incoming.isEmpty { gated = incoming } // an empty list never ungates everything by accident
             protection = args["protection"] as? String ?? "soft-gate"
             result(windows.count)
         case "setViewingUntil":
@@ -91,14 +112,11 @@ final class GateWatcher {
         }
     }
 
-    private func appCameForward(_ note: Notification) {
-        guard protection != "warn-only", !windows.isEmpty,
-              let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              let bundle = app.bundleIdentifier?.lowercased(),
-              gated.contains(bundle) else { return }
+    private func consider(_ app: NSRunningApplication) {
+        guard let bundle = app.bundleIdentifier?.lowercased(), gated.contains(bundle) else { return }
         let now = Self.nowMs()
         if now < viewingUntilMs || now - lastShownMs < 1500 { return }
-        guard let open = windows.first(where: { now >= $0.opensAtMs && now < $0.closesAtMs }) else { return }
+        guard let open = openWindow(at: now) else { return }
         lastShownMs = now
         channel.invokeMethod("gateTriggered", arguments: [
             "windowId": open.id,
@@ -109,14 +127,20 @@ final class GateWatcher {
 
     private func raiseGate(pid: Int32?) {
         guard let host = host else { return }
+        if savedFrame == nil { savedFrame = host.frame }
         // The trading app's screen, if we can find it; the main screen otherwise.
+        // Quartz window bounds are top-left origin on the primary display, so the
+        // flip uses the primary screen's height for every candidate, and the
+        // window's centre rather than a corner that can sit just off-screen.
         var screen = NSScreen.main
-        if let pid = pid, let app = NSRunningApplication(processIdentifier: pid),
+        if let pid = pid,
+           let primary = NSScreen.screens.first,
            let info = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]])?
-               .first(where: { ($0[kCGWindowOwnerPID as String] as? Int32) == app.processIdentifier }),
-           let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] {
-            let point = CGPoint(x: bounds["X"] ?? 0, y: bounds["Y"] ?? 0)
-            screen = NSScreen.screens.first { NSPointInRect(NSPoint(x: point.x, y: $0.frame.maxY - point.y), $0.frame) } ?? screen
+               .first(where: { ($0[kCGWindowOwnerPID as String] as? Int32) == pid }),
+           let dict = info[kCGWindowBounds as String] as? NSDictionary,
+           let bounds = CGRect(dictionaryRepresentation: dict) {
+            let centre = NSPoint(x: bounds.midX, y: primary.frame.maxY - bounds.midY)
+            screen = NSScreen.screens.first { NSPointInRect(centre, $0.frame) } ?? screen
         }
         if let frame = screen?.frame {
             host.setFrame(frame, display: true)
@@ -124,13 +148,27 @@ final class GateWatcher {
         host.level = .screenSaver
         host.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         host.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if #available(macOS 14.0, *) {
+            // Sonoma ignores a bare activate unless the current app yields.
+            if let front = NSWorkspace.shared.frontmostApplication, front != NSRunningApplication.current {
+                NSRunningApplication.current.activate(from: front, options: [.activateIgnoringOtherApps])
+            } else {
+                NSApp.activate()
+            }
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
+    /// Back to the tray: the window lives hidden, at its old size, not in the Dock.
     private func lowerGate() {
         guard let host = host else { return }
         host.level = .normal
         host.collectionBehavior = []
-        host.miniaturize(nil)
+        if let frame = savedFrame {
+            host.setFrame(frame, display: false)
+            savedFrame = nil
+        }
+        host.orderOut(nil)
     }
 }

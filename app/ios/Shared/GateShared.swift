@@ -40,8 +40,14 @@ public enum GateShared {
         public var atMs: Int64
     }
 
+    /// The app group store. A missing entitlement would split the app and the
+    /// extensions onto different stores and the gate would fail silently, so
+    /// a debug build stops here and a release build says so in the log.
     static var defaults: UserDefaults {
-        UserDefaults(suiteName: appGroup) ?? .standard
+        if let d = UserDefaults(suiteName: appGroup) { return d }
+        assertionFailure("App group \(appGroup) missing: add it to every target's entitlements")
+        NSLog("guard: app group %@ missing; gate state will not reach the extensions", appGroup)
+        return .standard
     }
 
     private enum Key {

@@ -80,11 +80,15 @@ class DesktopGate {
   }
 
   Future<void> _finish(String windowId, String? outcome, Future<void> Function() action) async {
+    // Stay out, hold-to-view and expiry can race each other: first one wins.
+    if (_showingWindowId != windowId) return;
+    _showingWindowId = null;
+    final at = _now;
+    navigatorKey.currentState?.pop();
     await action();
     if (outcome != null) {
-      await controller.recordOutcome(windowId, outcome, _now);
+      // The POST inside must never hold the gate; the journal is local first.
+      unawaited(controller.recordOutcome(windowId, outcome, at));
     }
-    navigatorKey.currentState?.pop();
-    _showingWindowId = null;
   }
 }

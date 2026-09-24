@@ -15,8 +15,13 @@ class SyncService {
   final String appVersion;
 
   String? deviceId;
+  Future<void>? _registering;
 
-  Future<void> ensureRegistered() async {
+  /// One registration at a time: a resume or a push arriving during a slow
+  /// first launch must not create a second device.
+  Future<void> ensureRegistered() => _registering ??= _register().whenComplete(() => _registering = null);
+
+  Future<void> _register() async {
     final creds = await store.credentials();
     if (creds != null) {
       deviceId = creds.deviceId;
@@ -29,10 +34,11 @@ class SyncService {
   }
 
   /// Returns the fresh payload, or the cached one if the network fails, or null
-  /// if there has never been a successful sync.
+  /// if there has never been a successful sync. Never throws for network
+  /// reasons: a first launch offline is a normal day.
   Future<SyncPayload?> sync() async {
-    await ensureRegistered();
     try {
+      await ensureRegistered();
       final payload = await api.sync();
       await store.save(payload);
       return payload;

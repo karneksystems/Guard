@@ -49,7 +49,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _opens ??= ControllerScope.of(context).opens.stream.listen(_open);
+    final c = ControllerScope.of(context);
+    if (_opens == null) {
+      _opens = c.opens.stream.listen(_open);
+      final waiting = c.lastTap;
+      if (waiting != null) WidgetsBinding.instance.addPostFrameCallback((_) => _open(waiting));
+    }
   }
 
   @override
@@ -61,6 +66,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
   /// A notification tap: rungs land on Windows, the digest on tomorrow's screen.
   void _open(NotificationTap tap) {
     if (!mounted) return;
+    ControllerScope.of(context).consumeTap();
     if (tap.isDigest) {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DigestScreen()));
     } else if (tap.isRung) {

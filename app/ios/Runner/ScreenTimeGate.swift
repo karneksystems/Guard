@@ -13,10 +13,10 @@ import SwiftUI
 /// Apple's Screen Time shield, applied by the GuardMonitor extension; this
 /// class only authorises, lets the user pick apps, and registers schedules.
 final class ScreenTimeGate {
-    private weak var controller: FlutterViewController?
-
     init(messenger: FlutterBinaryMessenger, controller: FlutterViewController?) {
-        self.controller = controller
+        // The controller passed at engine init is not yet anyone's root view
+        // controller (and never AppDelegate.window's under the scene lifecycle),
+        // so the presenter is resolved at call time instead.
         FlutterMethodChannel(name: "guard/gate", binaryMessenger: messenger).setMethodCallHandler { [weak self] call, result in
             self?.handleGate(call, result)
         }
@@ -69,31 +69,66 @@ final class ScreenTimeGate {
         #if canImport(FamilyControls)
         guard #available(iOS 16.0, *) else { return 0 }
         let center = DeviceActivityCenter()
-        center.stopMonitoring()
-        guard GateShared.protection != "warn-only",
-              GateShared.selectionData != nil,
-              AuthorizationCenter.shared.authorizationStatus == .approved else { return 0 }
-
+        let store = ManagedSettingsStore(named: ManagedSettingsStore.Name(GateShared.storeName))
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+        let wanted = Set(windows.filter { $0.closesAtMs > nowMs }.map { $0.windowId })
+
+        // Stopping an activity never fires intervalDidEnd, so only the ones that
+        // are no longer wanted go, and the active set and the shield follow.
+        let monitored = Set(center.activities.map { $0.rawValue })
+        let dropped = monitored.subtracting(wanted)
+        if !dropped.isEmpty { center.stopMonitoring(dropped.map { DeviceActivityName($0) }) }
+        let armed = GateShared.protection != "warn-only"
+            && GateShared.selectionData != nil
+            && AuthorizationCenter.shared.authorizationStatus == .approved
+        if !armed {
+            center.stopMonitoring()
+            GateShared.activeWindowIds = []
+            store.shield.applications = nil
+            store.shield.applicationCategories = nil
+            return 0
+        }
+        var active = GateShared.activeWindowIds.filter { wanted.contains($0) }
+
         let upcoming = windows.filter { $0.closesAtMs > nowMs }.sorted { $0.opensAtMs < $1.opensAtMs }.prefix(20)
         var tokens = Set<ApplicationToken>()
+        var categories = Set<ActivityCategoryToken>()
         if let data = GateShared.selectionData, let sel = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) {
             tokens = sel.applicationTokens
+            categories = sel.categoryTokens
         }
         var count = 0
         for w in upcoming {
+            if monitored.contains(w.windowId) {
+                count += 1
+                continue // already registered; leave it alone
+            }
             let closes = Date(timeIntervalSince1970: TimeInterval(w.closesAtMs) / 1000)
             var opens = Date(timeIntervalSince1970: TimeInterval(w.opensAtMs) / 1000)
             if closes.timeIntervalSince(opens) < GateShared.minimumIntervalSeconds {
                 opens = closes.addingTimeInterval(-GateShared.minimumIntervalSeconds)
             }
-            if opens < Date() { opens = Date().addingTimeInterval(5) }
-            if closes.timeIntervalSince(opens) < GateShared.minimumIntervalSeconds { continue }
+            var end = closes
+            if opens < Date() {
+                // Synced inside the window (or its lead time): shield now from the app,
+                // and register a schedule long enough to be accepted so the extension
+                // lifts it. On a short remainder the lift can be up to fifteen minutes
+                // late, which beats a shield that never lifts.
+                opens = Date().addingTimeInterval(5)
+                if end.timeIntervalSince(opens) < GateShared.minimumIntervalSeconds {
+                    end = opens.addingTimeInterval(GateShared.minimumIntervalSeconds)
+                }
+                if w.opensAtMs <= nowMs {
+                    store.shield.applications = tokens.isEmpty ? nil : tokens
+                    store.shield.applicationCategories = categories.isEmpty ? nil : ShieldSettings.ActivityCategoryPolicy.specific(categories)
+                    if !active.contains(w.windowId) { active.append(w.windowId) }
+                }
+            }
             let cal = Calendar.current
             let comps: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
             let schedule = DeviceActivitySchedule(
                 intervalStart: cal.dateComponents(comps, from: opens),
-                intervalEnd: cal.dateComponents(comps, from: closes),
+                intervalEnd: cal.dateComponents(comps, from: end),
                 repeats: false)
             var events: [DeviceActivityEvent.Name: DeviceActivityEvent] = [:]
             if GateShared.protection == "soft-gate", !tokens.isEmpty {
@@ -109,17 +144,33 @@ final class ScreenTimeGate {
                 // Cap reached or a bad interval: the ladder still fires; the gate doesn't.
             }
         }
+        GateShared.activeWindowIds = active
+        if active.isEmpty {
+            store.shield.applications = nil
+            store.shield.applicationCategories = nil
+        }
         return count
         #else
         return 0
         #endif
     }
 
+    /// The view controller to present from, right now.
+    private func presenter() -> UIViewController? {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
+    }
+
     /// Apple's picker. The selection is stored as tokens in the app group. We
     /// never see bundle ids.
     private func pickApps(_ result: @escaping FlutterResult) {
         #if canImport(FamilyControls)
-        guard #available(iOS 16.0, *), let host = controller else { return result(false) }
+        guard #available(iOS 16.0, *), let host = presenter() else { return result(false) }
         var selection = FamilyActivitySelection()
         if let data = GateShared.selectionData, let sel = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) {
             selection = sel

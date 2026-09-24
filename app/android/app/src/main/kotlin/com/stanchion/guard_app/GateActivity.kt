@@ -155,23 +155,50 @@ class GateActivity : Activity() {
         LinearLayout.LayoutParams.MATCH_PARENT, (56 * dp).toInt(),
     ).apply { topMargin = (10 * dp).toInt() }
 
-    private fun hhmm(ms: Long): String {
-        val c = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = ms }
-        return String.format("%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
-    }
 
     companion object {
+        fun hhmm(ms: Long): String {
+            val c = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = ms }
+            return String.format("%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
+        }
+
         private const val INK_BG = 0xFF0F1216.toInt()
         private const val INK_TEXT = 0xFFEDEFF2.toInt()
         private const val INK_MUTED = 0xFF9AA3AE.toInt()
         private const val METAL = 0xFFAE9558.toInt()
 
+        /**
+         * From a service this is a background activity launch. Android 10+ allows
+         * it when "display over other apps" is granted; otherwise the honest route
+         * is a full-screen-intent notification, which the OS turns into the
+         * activity on a locked or idle screen and a heads-up otherwise.
+         */
         fun show(context: Context, windowId: String) {
-            context.startActivity(
-                Intent(context, GateActivity::class.java)
-                    .putExtra(GateService.EXTRA_WINDOW_ID, windowId)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            val intent = Intent(context, GateActivity::class.java)
+                .putExtra(GateService.EXTRA_WINDOW_ID, windowId)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (android.provider.Settings.canDrawOverlays(context)) {
+                context.startActivity(intent)
+                return
+            }
+            val w = GateStore(context).window(windowId) ?: return
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(android.app.NotificationChannel("ladder_urgent", "Window opening", android.app.NotificationManager.IMPORTANCE_HIGH))
+            }
+            val pi = android.app.PendingIntent.getActivity(
+                context, 2, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
             )
+            nm.notify(4102, androidx.core.app.NotificationCompat.Builder(context, "ladder_urgent")
+                .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+                .setContentTitle("Restricted: ${w.instrument}")
+                .setContentText(w.events.ifBlank { "High-impact release" } + ". Stay out until " + hhmm(w.closesAtMs) + " UTC.")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+                .setCategory(androidx.core.app.NotificationCompat.CATEGORY_ALARM)
+                .setFullScreenIntent(pi, true)
+                .setContentIntent(pi)
+                .setAutoCancel(true)
+                .build())
         }
     }
 }

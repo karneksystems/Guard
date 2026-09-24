@@ -22,7 +22,9 @@ final class GuardShieldAction: ShieldActionDelegate {
             var apps = store.shield.applications ?? []
             apps.remove(application)
             store.shield.applications = apps.isEmpty ? nil : apps
-            completionHandler(.none)
+            // .defer makes the system re-read the store and drop the card; .none would
+            // leave the card up with the token already gone.
+            completionHandler(.defer)
         @unknown default:
             completionHandler(.close)
         }
@@ -41,7 +43,7 @@ final class GuardShieldAction: ShieldActionDelegate {
             }
             GateShared.appendJournal(windowId: windowId, outcome: "viewed")
             store.shield.applicationCategories = nil
-            completionHandler(.none)
+            completionHandler(.defer)
         @unknown default:
             completionHandler(.close)
         }

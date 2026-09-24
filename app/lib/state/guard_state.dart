@@ -49,10 +49,18 @@ class GuardState extends ChangeNotifier {
   List<String> get engineNotes => _engineNotes;
 
   /// The pack behind Firm match, when the mode is on and the pack is cached.
+  /// Unverified if either the cached pack or the fresher index says so: a
+  /// re-flag without a version bump must still widen the window.
   Map<String, dynamic>? get activePack {
     if (settings['mode'] != 'firm-match') return null;
     final id = settings['firmId'] as String?;
-    return id == null ? null : _packs.packs[id];
+    final pack = id == null ? null : _packs.packs[id];
+    if (pack == null) return null;
+    final index = _packs.index[id];
+    if (index != null && index.needsReverify && pack['needsReverify'] != true) {
+      return {...pack, 'needsReverify': true};
+    }
+    return pack;
   }
   bool get onboarded => _onboarded;
 
@@ -120,7 +128,7 @@ class GuardState extends ChangeNotifier {
                 : 'pick an account type: using conservative');
       }
     }
-    final result = RuleEngine((id) => _packs.packs[id] ?? (throw StateError('no pack $id'))).computeWindows(input);
+    final result = RuleEngine((id) => (id == settings['firmId'] ? activePack : _packs.packs[id]) ?? (throw StateError('no pack $id'))).computeWindows(input);
     _engineNotes = [...notes, ...result.notes];
     return [...result.windows]..sort((a, b) => a.opensAtUtc.compareTo(b.opensAtUtc));
   }
@@ -134,10 +142,14 @@ class GuardState extends ChangeNotifier {
 
   Duration? get syncAge => _payload == null ? null : DateTime.now().toUtc().difference(_payload!.fetchedAtUtc);
 
-  void update(SyncPayload payload) {
+  /// Local overrides are dropped only when the caller says the server already
+  /// holds them; an edit whose PUT is still pending or failed stays on top.
+  void update(SyncPayload payload, {bool keepLocalEdits = false}) {
     _payload = payload;
-    _localSettings = null;
-    _localInstruments = null;
+    if (!keepLocalEdits) {
+      _localSettings = null;
+      _localInstruments = null;
+    }
     notifyListeners();
   }
 
@@ -238,13 +250,13 @@ class GuardState extends ChangeNotifier {
     var day = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
     var key = Tracker.dateKey(day);
     if (!byDay.containsKey(key)) {
-      day = day.subtract(const Duration(days: 1));
+      day = DateTime(day.year, day.month, day.day - 1);
       key = Tracker.dateKey(day);
     }
     var n = 0;
     while (byDay[key] == true) {
       n++;
-      day = day.subtract(const Duration(days: 1));
+      day = DateTime(day.year, day.month, day.day - 1);
       key = Tracker.dateKey(day);
     }
     return n;

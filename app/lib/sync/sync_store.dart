@@ -77,18 +77,33 @@ class SyncStore implements LocalStore {
   }
 
   @override
-  Future<void> save(SyncPayload payload) => _writeAtomic(_payloadFile, payload.toJson());
+  Future<void> save(SyncPayload payload) => _serial(() => _writeAtomic(_payloadFile, payload.toJson()));
+
+  /// Writes queue behind one another so a read-merge-write never loses a key.
+  Future<void> _chain = Future.value();
+
+  Future<T> _serial<T>(Future<T> Function() op) {
+    final next = _chain.then((_) => op());
+    _chain = next.then((_) {}, onError: (_) {});
+    return next;
+  }
 
   @override
   Future<({String deviceId, String token})?> credentials() async {
     if (!await _credsFile.exists()) return null;
-    final json = jsonDecode(await _credsFile.readAsString()) as Map<String, dynamic>;
-    return (deviceId: json['deviceId'] as String, token: json['token'] as String);
+    try {
+      final json = jsonDecode(await _credsFile.readAsString()) as Map<String, dynamic>;
+      return (deviceId: json['deviceId'] as String, token: json['token'] as String);
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    }
   }
 
   @override
   Future<void> saveCredentials({required String deviceId, required String token}) =>
-      _writeAtomic(_credsFile, {'deviceId': deviceId, 'token': token});
+      _serial(() => _writeAtomic(_credsFile, {'deviceId': deviceId, 'token': token}));
 
   @override
   Future<Map<String, dynamic>> prefs() async {
@@ -102,17 +117,19 @@ class SyncStore implements LocalStore {
 
   /// Merges into the existing prefs.
   @override
-  Future<void> savePrefs(Map<String, dynamic> patch) async {
-    final merged = {...await prefs(), ...patch};
-    await _writeAtomic(_prefsFile, merged);
-  }
+  Future<void> savePrefs(Map<String, dynamic> patch) => _serial(() async {
+        final merged = {...await prefs(), ...patch};
+        await _writeAtomic(_prefsFile, merged);
+      });
 
   @override
-  Future<void> clear() async {
-    for (final f in [_payloadFile, _credsFile, _prefsFile]) {
-      if (await f.exists()) await f.delete();
-    }
-  }
+  Future<void> clear() => _serial(() async {
+        for (final f in [_payloadFile, _credsFile, _prefsFile]) {
+          if (await f.exists()) await f.delete();
+          final tmp = File('${f.path}.tmp');
+          if (await tmp.exists()) await tmp.delete();
+        }
+      });
 
   Future<void> _writeAtomic(File file, Map<String, dynamic> json) async {
     await directory.create(recursive: true);

@@ -48,7 +48,32 @@ class GuardController {
   StreamSubscription<Map<String, dynamic>>? _pushSub;
   StreamSubscription<NotificationTap>? _tapSub;
   Timer? _periodic;
-  bool _syncing = false;
+  Future<bool>? _inFlightSync;
+
+  /// applyPayload and everything that reconciles the OS run one at a time.
+  Future<void> _serial = Future.value();
+
+  /// Bumped by deleteEverything; work started under an older generation
+  /// must not write anything when it finishes.
+  int _generation = 0;
+
+  /// Settings and instruments the server has not confirmed yet. Reapplied
+  /// over incoming payloads and retried on the next sync.
+  final Map<String, dynamic> _pendingSettings = {};
+  List<Map<String, dynamic>>? _pendingInstruments;
+
+  /// The last tap nobody consumed yet (a cold-start tap lands before the
+  /// shell subscribes). The shell takes it on subscribe.
+  NotificationTap? lastTap;
+
+  /// The debug test window, kept in the gate schedule until it closes.
+  GateWindowSpec? _testWindow;
+
+  Future<T> _locked<T>(Future<T> Function() op) {
+    final next = _serial.then((_) => op());
+    _serial = next.then((_) {}, onError: (_) {});
+    return next;
+  }
 
   /// Where a tap wants the app to go. The shell listens.
   final StreamController<NotificationTap> opens = StreamController.broadcast(sync: true);
@@ -89,19 +114,44 @@ class GuardController {
   /// Pull the server's current view and apply it. Returns false when there is
   /// no backend or it could not be reached (the cache stands either way).
   /// Safe to call often: overlapping calls collapse into one.
-  Future<bool> resync() async {
+  Future<bool> resync() {
     final s = sync;
-    if (s == null || _syncing) return false;
-    _syncing = true;
-    try {
-      final fresh = await s.sync();
-      if (fresh == null) return false;
-      final changed = state.payload == null || fresh.fetchedAtUtc != state.payload!.fetchedAtUtc;
-      if (changed) await applyPayload(fresh);
-      await refreshPacks();
-      return changed;
-    } finally {
-      _syncing = false;
+    if (s == null) return Future.value(false);
+    return _inFlightSync ??= _resync(s).whenComplete(() => _inFlightSync = null);
+  }
+
+  Future<bool> _resync(SyncService s) async {
+    final gen = _generation;
+    await _retryPendingEdits();
+    final fresh = await s.sync();
+    if (fresh == null || gen != _generation) return false;
+    final changed = state.payload == null || fresh.fetchedAtUtc != state.payload!.fetchedAtUtc;
+    if (changed) await applyPayload(fresh);
+    await refreshPacks();
+    return changed;
+  }
+
+  bool get _hasPendingEdits => _pendingSettings.isNotEmpty || _pendingInstruments != null;
+
+  Future<void> _retryPendingEdits() async {
+    final a = api;
+    if (a == null || a.token == null || !_hasPendingEdits) return;
+    if (_pendingSettings.isNotEmpty) {
+      try {
+        await a.putSettings(_toWire(_pendingSettings));
+        _pendingSettings.clear();
+      } on Exception {
+        // Still pending.
+      }
+    }
+    final inst = _pendingInstruments;
+    if (inst != null) {
+      try {
+        await a.putInstruments(inst);
+        _pendingInstruments = null;
+      } on Exception {
+        // Still pending.
+      }
     }
   }
 
@@ -122,12 +172,14 @@ class GuardController {
   }
 
   /// A new payload: state, the local mirror of its ladder, the platform gate.
-  Future<void> applyPayload(SyncPayload payload) async {
-    state.update(payload);
-    await mirror?.reconcile(payload, now: _now().toUtc(), quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
-    await pushGateSchedule();
-    await refreshReminders();
-  }
+  Future<void> applyPayload(SyncPayload payload) => _locked(() async {
+        final gen = _generation;
+        state.update(payload, keepLocalEdits: _hasPendingEdits);
+        if (gen != _generation) return;
+        await mirror?.reconcile(payload, now: _now().toUtc(), quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
+        await pushGateSchedule();
+        await refreshReminders();
+      });
 
   /// The pack index, plus the full pack for the user's firm. A version change on
   /// that pack raises the rules-changed flag. Network failure keeps the cache.
@@ -196,36 +248,21 @@ class GuardController {
     final opens = _now().toUtc().add(const Duration(minutes: 1));
     final closes = opens.add(const Duration(minutes: 2));
     const id = 'test-window-000000000';
-    final specs = [
-      ...state.windows.map((w) => GateWindowSpec(
-            windowId: w.windowId,
-            opensAtMs: DateTime.parse(w.opensAtUtc).toUtc().millisecondsSinceEpoch,
-            closesAtMs: DateTime.parse(w.closesAtUtc).toUtc().millisecondsSinceEpoch,
-            instrument: w.instrument,
-            events: w.reasons.map(state.titleFor).join(', '),
-          )),
-      GateWindowSpec(
-        windowId: id,
-        opensAtMs: opens.millisecondsSinceEpoch,
-        closesAtMs: closes.millisecondsSinceEpoch,
-        instrument: 'TEST',
-        events: 'Test window',
-      ),
-    ];
-    if (bridge.hasGate) {
-      await bridge.scheduleGateWindows(
-        windows: specs,
-        gatedAppIds: state.gatedAppIds,
-        protection: state.settings['protection'] as String? ?? 'soft-gate',
-      );
-    }
+    _testWindow = GateWindowSpec(
+      windowId: id,
+      opensAtMs: opens.millisecondsSinceEpoch,
+      closesAtMs: closes.millisecondsSinceEpoch,
+      instrument: 'TEST',
+      events: 'Test window',
+    );
+    await pushGateSchedule();
     final sched = mirror?.scheduler;
     if (sched != null) {
       String hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
       final t1 = RungWords.forRung(kind: 't-1', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
       final open = RungWords.forRung(kind: 'open', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
-      await sched.schedule(ScheduledNotification(id: kReminderIdBase + 900, alertId: 'test:t-1', title: t1.title, body: t1.body, atUtc: opens.subtract(const Duration(minutes: 1)), channel: t1.channel));
-      await sched.schedule(ScheduledNotification(id: kReminderIdBase + 901, alertId: 'test:open', title: open.title, body: open.body, atUtc: opens, channel: open.channel));
+      await sched.schedule(ScheduledNotification(id: kTestIdBase + 1, alertId: 'test:t-1', title: t1.title, body: t1.body, atUtc: opens.subtract(const Duration(minutes: 1)), channel: t1.channel));
+      await sched.schedule(ScheduledNotification(id: kTestIdBase + 2, alertId: 'test:open', title: open.title, body: open.body, atUtc: opens, channel: open.channel));
     }
     return id;
   }
@@ -234,6 +271,11 @@ class GuardController {
   Future<void> refreshReminders() async {
     final r = reminders;
     if (r == null) return;
+    if (!state.onboarded) {
+      // Nothing to remind about before onboarding, and nothing after a wipe.
+      await r.reconcile(windows: const [], titleFor: state.titleFor, digestLocalTime: '20:00', tracker: const Tracker(weekendWarning: false, inactivityDays: 0), now: _now().toUtc());
+      return;
+    }
     await r.reconcile(
       windows: state.windows,
       titleFor: state.titleFor,
@@ -272,6 +314,8 @@ class GuardController {
               events: w.reasons.map(state.titleFor).join(', '),
             ))
         .toList();
+    final test = _testWindow;
+    if (test != null && test.closesAtMs > _now().toUtc().millisecondsSinceEpoch) windows.add(test);
     return bridge.scheduleGateWindows(
       windows: windows,
       gatedAppIds: state.gatedAppIds,
@@ -358,8 +402,12 @@ class GuardController {
       if (p != null) unawaited(mirror?.snooze(p, tap.payload!, now: _now().toUtc()) ?? Future.value());
       return;
     }
+    lastTap = tap;
     opens.add(tap);
   }
+
+  /// The shell took a tap; nothing is waiting.
+  void consumeTap() => lastTap = null;
 
   void dispose() {
     _pushSub?.cancel();
@@ -386,10 +434,12 @@ class GuardController {
     }
     final a = api;
     if (a == null || a.token == null) return;
+    _pendingSettings.addAll(patch);
     try {
-      await a.putSettings(_toWire(patch));
+      await a.putSettings(_toWire(_pendingSettings));
+      _pendingSettings.clear();
     } on Exception {
-      // The next sync reconciles. Home shows the sync age.
+      // Stays pending: reapplied over payloads and retried on the next sync.
     }
   }
 
@@ -399,10 +449,12 @@ class GuardController {
     await refreshReminders();
     final a = api;
     if (a == null || a.token == null) return;
+    _pendingInstruments = instruments;
     try {
       await a.putInstruments(instruments);
+      _pendingInstruments = null;
     } on Exception {
-      // As above.
+      // Stays pending, as above.
     }
   }
 
@@ -428,14 +480,21 @@ class GuardController {
         return false;
       }
     }
-    await store?.clear();
-    if (bridge.hasGate) {
-      await bridge.scheduleGateWindows(windows: const [], gatedAppIds: const [], protection: 'warn-only');
-    }
-    state.reset();
-    await mirror?.reconcile(SyncPayload.fromJson(const {'serverTimeUtc': '1970-01-01T00:00:00Z', 'settings': <String, dynamic>{}}));
-    await refreshReminders();
-    return true;
+    _generation++; // anything in flight must not write after this
+    _pendingSettings.clear();
+    _pendingInstruments = null;
+    _testWindow = null;
+    return _locked(() async {
+      await store?.clear();
+      if (bridge.hasGate) {
+        await bridge.drainJournal(); // outcomes from before the wipe are discarded, not re-posted
+        await bridge.scheduleGateWindows(windows: const [], gatedAppIds: const [], protection: 'warn-only');
+      }
+      state.reset();
+      await mirror?.reconcile(SyncPayload.fromJson(const {'serverTimeUtc': '1970-01-01T00:00:00Z', 'settings': <String, dynamic>{}}));
+      await refreshReminders();
+      return true;
+    });
   }
 
   /// Settings travel in snake_case on the wire (backend/routes/api.php).
