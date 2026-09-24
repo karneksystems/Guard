@@ -40,11 +40,49 @@ enum GuardPermission {
       };
 }
 
+/// A window handed to the platform gate. Times are UTC epoch milliseconds so
+/// the native side never parses a string.
+class GateWindowSpec {
+  const GateWindowSpec({
+    required this.windowId,
+    required this.opensAtMs,
+    required this.closesAtMs,
+    required this.instrument,
+    required this.events,
+  });
+
+  final String windowId;
+  final int opensAtMs;
+  final int closesAtMs;
+  final String instrument;
+  final String events;
+
+  Map<String, Object> toMap() => {
+        'windowId': windowId,
+        'opensAtMs': opensAtMs,
+        'closesAtMs': closesAtMs,
+        'instrument': instrument,
+        'events': events,
+      };
+}
+
+/// An outcome the gate recorded while the app wasn't running.
+class GateOutcome {
+  const GateOutcome({required this.windowId, required this.outcome, required this.atUtc});
+
+  final String windowId;
+  final String outcome;
+  final DateTime atUtc;
+}
+
 /// What the app asks of the OS. One implementation per platform behind a method
 /// channel, plus a fake for tests and for platforms where a piece doesn't apply.
 abstract class PlatformBridge {
   /// Which permissions this platform has at all.
   Set<GuardPermission> get supportedPermissions;
+
+  /// Whether this platform can enforce a gate at all (Android and Windows).
+  bool get hasGate;
 
   Future<List<GateableApp>> listApps();
 
@@ -52,6 +90,16 @@ abstract class PlatformBridge {
 
   /// Opens the OS page for the permission. Returns when the user comes back.
   Future<void> requestPermission(GuardPermission permission);
+
+  /// Replace the platform gate's schedule. Returns how many windows it holds.
+  Future<int> scheduleGateWindows({
+    required List<GateWindowSpec> windows,
+    required List<String> gatedAppIds,
+    required String protection,
+  });
+
+  /// Outcomes recorded by the gate since the last drain. Clears them.
+  Future<List<GateOutcome>> drainJournal();
 }
 
 /// Android and, later, Windows and macOS. iOS has no gate to grant permissions
@@ -108,6 +156,45 @@ class MethodChannelBridge implements PlatformBridge {
       // Nothing to open on this platform yet.
     }
   }
+
+  @override
+  bool get hasGate => _platform == TargetPlatform.android || _platform == TargetPlatform.windows;
+
+  @override
+  Future<int> scheduleGateWindows({
+    required List<GateWindowSpec> windows,
+    required List<String> gatedAppIds,
+    required String protection,
+  }) async {
+    if (!hasGate) return 0;
+    try {
+      return await _gate.invokeMethod<int>('scheduleWindows', {
+            'windows': windows.map((w) => w.toMap()).toList(),
+            'gatedPackages': gatedAppIds,
+            'protection': protection,
+          }) ??
+          0;
+    } on MissingPluginException {
+      return 0;
+    }
+  }
+
+  @override
+  Future<List<GateOutcome>> drainJournal() async {
+    if (!hasGate) return const [];
+    try {
+      final raw = await _gate.invokeListMethod<Map<Object?, Object?>>('drainJournal') ?? const [];
+      return raw
+          .map((m) => GateOutcome(
+                windowId: m['windowId'] as String,
+                outcome: m['outcome'] as String,
+                atUtc: DateTime.fromMillisecondsSinceEpoch((m['atMs'] as num).toInt(), isUtc: true),
+              ))
+          .toList();
+    } on MissingPluginException {
+      return const [];
+    }
+  }
 }
 
 /// Deterministic stand-in. Tests flip permissions; sample mode gets MT5 only.
@@ -128,9 +215,21 @@ class FakeBridge implements PlatformBridge {
   @override
   final Set<GuardPermission> supportedPermissions;
 
+  @override
+  bool hasGate = true;
+
   final Map<GuardPermission, bool> _granted;
   final List<GateableApp> _apps;
   final List<GuardPermission> requested = [];
+
+  /// What the last scheduleGateWindows call handed over.
+  List<GateWindowSpec> scheduledWindows = const [];
+  List<String> scheduledGatedAppIds = const [];
+  String scheduledProtection = '';
+  int scheduleCalls = 0;
+
+  /// Outcomes the next drainJournal returns.
+  final List<GateOutcome> pendingOutcomes = [];
 
   /// Tests call this to simulate the user granting on the OS page.
   void grant(GuardPermission p, [bool value = true]) => _granted[p] = value;
@@ -145,5 +244,25 @@ class FakeBridge implements PlatformBridge {
   @override
   Future<void> requestPermission(GuardPermission permission) async {
     requested.add(permission);
+  }
+
+  @override
+  Future<int> scheduleGateWindows({
+    required List<GateWindowSpec> windows,
+    required List<String> gatedAppIds,
+    required String protection,
+  }) async {
+    scheduledWindows = windows;
+    scheduledGatedAppIds = gatedAppIds;
+    scheduledProtection = protection;
+    scheduleCalls++;
+    return windows.length;
+  }
+
+  @override
+  Future<List<GateOutcome>> drainJournal() async {
+    final out = [...pendingOutcomes];
+    pendingOutcomes.clear();
+    return out;
   }
 }

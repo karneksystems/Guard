@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // NotificationCompat and ServiceCompat for GateService.
+    implementation("androidx.core:core-ktx:1.13.1")
+}

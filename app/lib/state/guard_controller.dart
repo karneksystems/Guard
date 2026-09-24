@@ -51,12 +51,51 @@ class GuardController {
     final fresh = await sync?.sync();
     if (fresh != null) await applyPayload(fresh);
     await registerPushToken();
+    await drainGateJournal();
   }
 
-  /// A new payload: state, then the local mirror of its ladder.
+  /// A new payload: state, the local mirror of its ladder, the platform gate.
   Future<void> applyPayload(SyncPayload payload) async {
     state.update(payload);
     await mirror?.reconcile(payload);
+    await pushGateSchedule();
+  }
+
+  /// Hand the device engine's windows to the platform gate, with the gated app
+  /// ids and the protection mode. Called after every payload and settings change.
+  Future<int> pushGateSchedule() async {
+    if (!bridge.hasGate) return 0;
+    final windows = state.windows
+        .map((w) => GateWindowSpec(
+              windowId: w.windowId,
+              opensAtMs: DateTime.parse(w.opensAtUtc).toUtc().millisecondsSinceEpoch,
+              closesAtMs: DateTime.parse(w.closesAtUtc).toUtc().millisecondsSinceEpoch,
+              instrument: w.instrument,
+              events: w.reasons.map(state.titleFor).join(', '),
+            ))
+        .toList();
+    return bridge.scheduleGateWindows(
+      windows: windows,
+      gatedAppIds: state.gatedAppIds,
+      protection: state.settings['protection'] as String? ?? 'soft-gate',
+    );
+  }
+
+  /// Outcomes the gate recorded while the app was closed: into state and up to
+  /// the backend. The package name never travels; only window id and outcome.
+  Future<void> drainGateJournal() async {
+    final outcomes = await bridge.drainJournal();
+    if (outcomes.isEmpty) return;
+    state.addJournal(outcomes);
+    final a = api;
+    if (a == null || a.token == null) return;
+    for (final o in outcomes) {
+      try {
+        await a.postJournal(windowId: o.windowId, outcome: o.outcome, atUtc: o.atUtc);
+      } on Exception {
+        // Kept in state; the next drain won't repeat it, and that's acceptable for a journal.
+      }
+    }
   }
 
   Future<void> registerPushToken() async {
@@ -92,6 +131,7 @@ class GuardController {
 
   Future<void> updateSettings(Map<String, dynamic> patch) async {
     state.applySettings(patch);
+    await pushGateSchedule();
     final a = api;
     if (a == null || a.token == null) return;
     try {
@@ -103,6 +143,7 @@ class GuardController {
 
   Future<void> replaceInstruments(List<Map<String, dynamic>> instruments) async {
     state.applyInstruments(instruments);
+    await pushGateSchedule();
     final a = api;
     if (a == null || a.token == null) return;
     try {
@@ -115,6 +156,7 @@ class GuardController {
   Future<void> setGatedApps(List<String> ids) async {
     state.setGatedApps(ids);
     await store?.savePrefs({'gatedApps': ids});
+    await pushGateSchedule();
   }
 
   Future<void> finishOnboarding() async {

@@ -19,6 +19,7 @@ class GuardState extends ChangeNotifier {
   List<Map<String, dynamic>>? _localInstruments;
   List<String> _gatedAppIds = const ['net.metaquotes.metatrader5'];
   Map<GuardPermission, bool> _permissions = const {};
+  final List<GateOutcome> _journal = [];
 
   SyncPayload? get payload => _payload;
   bool get isSample => _payload == null;
@@ -31,6 +32,9 @@ class GuardState extends ChangeNotifier {
       _localInstruments ?? _payload?.instruments ?? SampleData.instruments;
   List<String> get gatedAppIds => _gatedAppIds;
   Map<GuardPermission, bool> get permissions => _permissions;
+
+  /// Newest first.
+  List<GateOutcome> get journal => List.unmodifiable(_journal);
 
   /// Permissions the platform supports that the user hasn't granted yet.
   List<GuardPermission> get missingPermissions =>
@@ -91,6 +95,13 @@ class GuardState extends ChangeNotifier {
 
   void markOnboarded() {
     _onboarded = true;
+    notifyListeners();
+  }
+
+  void addJournal(Iterable<GateOutcome> outcomes) {
+    if (outcomes.isEmpty) return;
+    _journal.insertAll(0, outcomes);
+    _journal.sort((a, b) => b.atUtc.compareTo(a.atUtc));
     notifyListeners();
   }
 }

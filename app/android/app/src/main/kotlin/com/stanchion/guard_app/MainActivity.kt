@@ -15,8 +15,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Two small channels the Dart side talks to. Detection and the overlay itself
- * (GateService) land in M4; this is the permissions and app-list half of M2.
+ * The channels the Dart side talks to.
+ *  guard/gate:        listApps, scheduleWindows, drainJournal
+ *  guard/permissions: status, request
  *
  * No QUERY_ALL_PACKAGES: the manifest declares <queries> for the handful of
  * trading apps we can gate, which is what Play wants.
@@ -32,12 +33,34 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val store = GateStore(this)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "guard/gate").setMethodCallHandler { call, result ->
             when (call.method) {
                 "listApps" -> result.success(gateable.map { (id, label) ->
                     mapOf("id" to id, "label" to label, "installed" to isInstalled(id))
                 })
+                "scheduleWindows" -> {
+                    val windows = call.argument<List<Map<String, Any>>>("windows") ?: emptyList()
+                    val gated = call.argument<List<String>>("gatedPackages") ?: emptyList()
+                    val protection = call.argument<String>("protection") ?: "soft-gate"
+                    val previous = store.windows.size
+                    store.windows = windows.map {
+                        GateWindow(
+                            windowId = it["windowId"] as String,
+                            opensAtMs = (it["opensAtMs"] as Number).toLong(),
+                            closesAtMs = (it["closesAtMs"] as Number).toLong(),
+                            instrument = it["instrument"] as String,
+                            events = (it["events"] as? String) ?: "",
+                        )
+                    }
+                    store.gatedPackages = gated.toSet()
+                    store.protection = protection
+                    GateScheduler.cancelAll(this, previous)
+                    GateScheduler.reschedule(this, store)
+                    result.success(store.windows.size)
+                }
+                "drainJournal" -> result.success(store.drainJournal())
                 else -> result.notImplemented()
             }
         }

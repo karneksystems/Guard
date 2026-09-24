@@ -81,5 +81,14 @@ with the APNs and FCM keys in `.env` to go live. The app's Firebase registration
 waits on a Firebase project: drop `google-services.json` and
 `GoogleService-Info.plist` in and replace `FakeRegistrar` in `main.dart`.
 
-Not yet: Drift for the journal and history, the gate modules (M4, M5, M7),
-fonts bundled, store builds. See `docs/MILESTONES.md`.
+M4, Android Soft gate: an exact alarm at window open starts a short-lived
+foreground service that polls usage events once a second and shows a native
+full-screen gate when a gated app comes to the front (countdown, events,
+instrument, Stay out, Hold to view only for three seconds, hard block hides the
+second). Windows survive reboot. Outcomes drain back into the journal and the
+backend without the package name. The Dart side hands the device engine's
+windows to the gate after every payload and settings change. Compiled by the
+android-build CI job; not yet run on a device.
+
+Not yet: Drift for the journal and history, the Windows tray app (M5), the iOS
+shield (M7), fonts bundled, store builds. See `docs/MILESTONES.md`.
