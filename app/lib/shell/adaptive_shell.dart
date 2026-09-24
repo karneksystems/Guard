@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'dart:async';
+
+import '../notifications/notification_scheduler.dart';
+import '../screens/digest_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/journal_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/windows_screen.dart';
+import '../state/guard_controller.dart';
 import '../theme/tokens.dart';
 
 /// The hub is designed in and built later. Its nav slot exists from day one so it
@@ -39,6 +44,31 @@ class AdaptiveShell extends StatefulWidget {
 
 class _AdaptiveShellState extends State<AdaptiveShell> {
   GuardTab _tab = GuardTab.home;
+  StreamSubscription<NotificationTap>? _opens;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _opens ??= ControllerScope.of(context).opens.stream.listen(_open);
+  }
+
+  @override
+  void dispose() {
+    _opens?.cancel();
+    super.dispose();
+  }
+
+  /// A notification tap: rungs land on Windows, the digest on tomorrow's screen.
+  void _open(NotificationTap tap) {
+    if (!mounted) return;
+    if (tap.isDigest) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DigestScreen()));
+    } else if (tap.isRung) {
+      setState(() => _tab = GuardTab.windows);
+    } else {
+      setState(() => _tab = GuardTab.home);
+    }
+  }
 
   Widget _screen(GuardTab tab) => switch (tab) {
         GuardTab.home => const HomeScreen(),

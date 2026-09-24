@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -25,6 +26,20 @@ class ScheduledNotification {
   final String channel;
 }
 
+/// The user tapped a notification, or one of its buttons. `payload` is the
+/// alert id for a rung, `digest:<day>`, `weekend:<day>` or `inactivity:<day>`
+/// for a reminder. `action` is null for a plain tap, or `snooze`.
+class NotificationTap {
+  const NotificationTap({required this.id, required this.payload, this.action});
+
+  final int? id;
+  final String? payload;
+  final String? action;
+
+  bool get isRung => payload != null && !payload!.contains(':');
+  bool get isDigest => payload?.startsWith('digest:') == true;
+}
+
 /// What the mirror needs from the OS. Real implementation below; the fake is
 /// what tests use, and what platforms without a notification plugin fall back to.
 abstract class NotificationScheduler {
@@ -32,6 +47,9 @@ abstract class NotificationScheduler {
   Future<void> schedule(ScheduledNotification n);
   Future<void> cancel(int id);
   Future<List<int>> pendingIds();
+
+  /// Taps, including the one that launched the app cold.
+  Stream<NotificationTap> get taps;
 }
 
 /// Alert ids are 20 hex characters; the first 7 give a stable 28-bit int id,
@@ -41,6 +59,13 @@ int notificationIdFor(String alertId) => int.parse(alertId.substring(0, 7), radi
 class FakeScheduler implements NotificationScheduler {
   final Map<int, ScheduledNotification> pending = {};
   final List<int> cancelled = [];
+  final _taps = StreamController<NotificationTap>.broadcast(sync: true);
+
+  @override
+  Stream<NotificationTap> get taps => _taps.stream;
+
+  /// Tests call this to simulate a tap.
+  void tap(String payload, {String? action, int? id}) => _taps.add(NotificationTap(id: id, payload: payload, action: action));
 
   @override
   Future<void> initialise() async {}
@@ -66,6 +91,12 @@ class LocalNotificationScheduler implements NotificationScheduler {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _ready = false;
+  final _taps = StreamController<NotificationTap>.broadcast();
+
+  @override
+  Stream<NotificationTap> get taps => _taps.stream;
+
+  static const snoozeAction = 'snooze';
 
   static bool get supported =>
       !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows);
@@ -91,7 +122,14 @@ class LocalNotificationScheduler implements NotificationScheduler {
     );
     await _plugin.initialize(
       settings: const InitializationSettings(android: android, iOS: darwin, macOS: darwin, windows: windows),
+      onDidReceiveNotificationResponse: (r) => _taps.add(NotificationTap(id: r.id, payload: r.payload, action: r.actionId)),
     );
+    // A tap that launched the app cold arrives here, not through the callback.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    final r = launch?.notificationResponse;
+    if (launch?.didNotificationLaunchApp == true && r != null) {
+      _taps.add(NotificationTap(id: r.id, payload: r.payload, action: r.actionId));
+    }
 
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
@@ -148,6 +186,10 @@ class LocalNotificationScheduler implements NotificationScheduler {
       windows: WindowsNotificationDetails(
         // Alarms stay on screen until dismissed; the rest use the default toast.
         scenario: urgent ? WindowsNotificationScenario.alarm : null,
+        actions: const [
+          WindowsAction(content: 'Open', arguments: 'open'),
+          WindowsAction(content: 'Snooze 1 min', arguments: snoozeAction),
+        ],
       ),
     );
     await _plugin.zonedSchedule(

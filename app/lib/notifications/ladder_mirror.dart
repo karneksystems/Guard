@@ -91,5 +91,31 @@ class LadderMirror {
   /// The push for this alert id arrived; its mirror isn't needed.
   Future<void> pushArrived(String alertId) => scheduler.cancel(notificationIdFor(alertId));
 
+  /// Snooze: the same words again in a minute, under the same id.
+  Future<void> snooze(SyncPayload payload, String alertId, {DateTime? now}) async {
+    now ??= DateTime.now().toUtc();
+    final rung = payload.ladder.where((r) => r['alertId'] == alertId).firstOrNull;
+    if (rung == null) return;
+    final windowsById = {for (final w in payload.windows) w['windowId'] as String: w};
+    final window = windowsById[rung['windowId']];
+    final reasons = (window?['reasons'] as List?)?.cast<String>() ?? const [];
+    final words = RungWords.forRung(
+      kind: rung['kind'] as String,
+      instrument: window?['instrument'] as String? ?? 'your instrument',
+      eventTitles: reasons.map(payload.titleFor).toList(),
+      opensHhmm: _hhmm(window?['opensAtUtc'] as String?),
+      closesHhmm: _hhmm(window?['closesAtUtc'] as String?),
+    );
+    final id = notificationIdFor(alertId);
+    await scheduler.schedule(ScheduledNotification(
+      id: id,
+      alertId: alertId,
+      title: words.title,
+      body: words.body,
+      atUtc: now.add(const Duration(minutes: 1)),
+      channel: words.channel,
+    ));
+  }
+
   static String _hhmm(String? isoUtc) => isoUtc == null || isoUtc.length < 16 ? '' : isoUtc.substring(11, 16);
 }

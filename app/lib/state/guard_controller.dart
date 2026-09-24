@@ -6,6 +6,7 @@ import '../billing/billing.dart';
 import '../features/tracker.dart';
 import '../packs/pack_cache.dart';
 import '../notifications/ladder_mirror.dart';
+import '../notifications/notification_scheduler.dart';
 import '../notifications/push_registrar.dart';
 import '../notifications/reminders.dart';
 import '../platform/platform_bridge.dart';
@@ -44,6 +45,10 @@ class GuardController {
   final DateTime Function() _now;
 
   StreamSubscription<Map<String, dynamic>>? _pushSub;
+  StreamSubscription<NotificationTap>? _tapSub;
+
+  /// Where a tap wants the app to go. The shell listens.
+  final StreamController<NotificationTap> opens = StreamController.broadcast(sync: true);
 
   Future<void> start() async {
     final prefs = await store?.prefs();
@@ -65,6 +70,7 @@ class GuardController {
       }
     }
     await refreshPermissions();
+    _tapSub ??= mirror?.scheduler.taps.listen(_onTap);
     await mirror?.scheduler.initialise();
     _pushSub ??= push?.messages.listen(_onPush);
 
@@ -80,7 +86,7 @@ class GuardController {
   /// A new payload: state, the local mirror of its ladder, the platform gate.
   Future<void> applyPayload(SyncPayload payload) async {
     state.update(payload);
-    await mirror?.reconcile(payload, quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
+    await mirror?.reconcile(payload, now: _now().toUtc(), quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
     await pushGateSchedule();
     await refreshReminders();
   }
@@ -260,8 +266,19 @@ class GuardController {
     }
   }
 
+  void _onTap(NotificationTap tap) {
+    if (tap.action == LocalNotificationScheduler.snoozeAction && tap.payload != null) {
+      final p = state.payload;
+      if (p != null) unawaited(mirror?.snooze(p, tap.payload!, now: _now().toUtc()) ?? Future.value());
+      return;
+    }
+    opens.add(tap);
+  }
+
   void dispose() {
     _pushSub?.cancel();
+    _tapSub?.cancel();
+    opens.close();
   }
 
   Future<void> refreshPermissions() async {
@@ -278,7 +295,7 @@ class GuardController {
     await pushGateSchedule();
     if (patch.containsKey('digestLocalTime') || patch.containsKey('windowBeforeMin')) await refreshReminders();
     if (patch.containsKey('quietHours') && state.payload != null) {
-      await mirror?.reconcile(state.payload!, quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
+      await mirror?.reconcile(state.payload!, now: _now().toUtc(), quietHours: state.settings['quietHours'] as Map<String, dynamic>?);
     }
     final a = api;
     if (a == null || a.token == null) return;
