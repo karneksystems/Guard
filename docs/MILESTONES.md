@@ -23,3 +23,21 @@ which the brief already allows.
 
 Watch items: the Play declarations for the specialUse service and full-screen intent
 are the most likely review bounce, so record the demo video during M4, not M9.
+
+## Status, 24 September 2026
+
+What CI proves is that it compiles and the logic holds under test. Nothing has run
+on a device. "Built" below means that; "done" waits on a device pass.
+
+| # | Built | Waiting on |
+|---|---|---|
+| M0 | Docs, packs, schema, fixtures, entitlement request filed | Name, vendor quotes, pack sources read |
+| M1 | App on four targets, backend with fake vendor and Trading Economics adapter, both engines pass the ten fixtures, profile and hub slot | Vendor key |
+| M2 | Six-step onboarding, every setting editable, Android permission flow and banner | Device pass |
+| M3 | Server ladder with reconcile, APNs and FCM senders, local mirror, silent resync push, quiet hours | APNs key, Firebase project, the ten-device week |
+| M4 | Exact alarm, specialUse service, native gate, journal drain | Samsung, Pixel, Xiaomi pass; Play video |
+| M5 | Win32 watcher, tray, start at login, toasts with Open and Snooze, unsigned MSIX job | Signing certificate; the socket is D15 |
+| M6 | Tracker, digest, weekend, inactivity, source strip, journal self-report | Device pass |
+| M7 | All Swift written, app target compiles, D14 limits recorded; macOS NSWorkspace gate | Xcode extension targets, Apple's entitlement reply |
+| M8 | Flags with grace, packs on device, Firm match offline, rules-changed flag, paywall, entitlement endpoint, firm-list import | Store accounts, the three verifiers and store SDKs, a human reading five packs, ads decision |
+| M9 | Privacy, terms and Play declarations drafted; deploy runbook; device-testing runbook | Legal review, hosting, store listings, the video |
