@@ -18,8 +18,16 @@ rescheduled event gets new ids and the old ones are cancelled.
 
 Reconcile runs on: settings change, instrument change, pack change, event.changed,
 device registered, and a nightly sweep at 00:30 UTC covering the next 48 hours. Each
-rung is a Horizon delayed job. Jobs are idempotent: on fire, re-read the rung, skip
-if cancelled or already sent, send, then mark sent with the provider's message id.
+rung is a Horizon delayed job, dispatched once the reconcile's transaction has
+committed. Jobs send exactly once: on fire, a compare-and-set moves the rung from
+scheduled to sending, and only the worker that won sends, then marks it sent with
+the provider's message id. A rung left in sending after a crash is never resent;
+one lost alert beats two delivered. Rungs already past when a reconcile runs are
+not created (a "window in 60 min" push at T-3 would be a lie), except open while
+the window is still open. A cancelled rung whose id is wanted again, because the
+vendor moved an event back or quiet hours came off, is revived rather than
+skipped. A sweep every minute re-dispatches any rung still scheduled after its
+time, in case its queue job was lost.
 
 Precision matters on T-1 and open. Rungs go on a dedicated queue with its own
 workers polled every second, never shared with slow jobs. Target: a rung leaves the
