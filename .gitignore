@@ -7,10 +7,12 @@ backend/.phpunit.result.cache
 backend/storage/*.key
 backend/storage/app/public/packs/
 backend/storage/logs/*.log
-backend/storage/framework/cache/data/
-backend/storage/framework/sessions/
-backend/storage/framework/testing/
-backend/storage/framework/views/
+# Keep the .gitignore placeholders so the directories exist on a fresh checkout.
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/testing/*
+backend/storage/framework/views/*
+!backend/storage/framework/**/.gitignore
 backend/database/database.sqlite
 backend/public/storage
 backend/public/hot
