@@ -3,6 +3,7 @@ import 'package:rule_engine/rule_engine.dart';
 
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
+import 'permissions_screen.dart';
 
 /// Home, per the brief: today's windows, next event countdown, protection mode,
 /// daily-loss tracker, minimum-days countdown. Scannable in two seconds.
@@ -30,6 +31,8 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 4),
         Text('${_cap(protection)} · $mode · ${state.instruments.length} instruments · $syncLine', style: text.bodySmall),
         const SizedBox(height: Tokens.gutter),
+        const PermissionBanner(),
+        if (state.missingPermissions.isNotEmpty) const SizedBox(height: Tokens.gutter),
         _NextWindowCard(window: next, titleFor: state.titleFor),
         const SizedBox(height: Tokens.gutter),
         Text('Windows ahead', style: text.titleMedium),

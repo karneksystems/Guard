@@ -9,7 +9,7 @@ class SyncService {
   SyncService({required this.api, required this.store, required this.platform, required this.tz, required this.appVersion});
 
   final ApiClient api;
-  final SyncStore store;
+  final LocalStore store;
   final String platform;
   final String tz;
   final String appVersion;

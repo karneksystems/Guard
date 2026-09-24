@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'onboarding/onboarding_flow.dart';
+import 'platform/platform_bridge.dart';
 import 'shell/adaptive_shell.dart';
+import 'state/guard_controller.dart';
 import 'state/guard_state.dart';
 import 'sync/api_client.dart';
 import 'sync/sync_service.dart';
@@ -19,46 +22,66 @@ const String kAppVersion = '0.1.0';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = GuardState();
-  runApp(GuardApp(state: state));
-  if (kApiBaseUrl.isNotEmpty) {
-    unawaited(_startSync(state));
-  }
-}
-
-Future<void> _startSync(GuardState state) async {
-  final dir = await getApplicationSupportDirectory();
-  final store = SyncStore(dir);
-  final cached = await store.latest();
-  if (cached != null) state.update(cached);
-
-  final service = SyncService(
-    api: ApiClient(baseUrl: kApiBaseUrl),
+  final store = SyncStore(await getApplicationSupportDirectory());
+  final api = kApiBaseUrl.isEmpty ? null : ApiClient(baseUrl: kApiBaseUrl);
+  final controller = GuardController(
+    state: state,
+    bridge: MethodChannelBridge(),
+    api: api,
     store: store,
-    platform: defaultTargetPlatform.name.toLowerCase(),
-    tz: DateTime.now().timeZoneName,
-    appVersion: kAppVersion,
+    sync: api == null
+        ? null
+        : SyncService(
+            api: api,
+            store: store,
+            platform: defaultTargetPlatform.name.toLowerCase(),
+            tz: DateTime.now().timeZoneName,
+            appVersion: kAppVersion,
+          ),
   );
-  final fresh = await service.sync();
-  if (fresh != null) state.update(fresh);
+  runApp(GuardApp(state: state, controller: controller));
+  unawaited(controller.start());
 }
 
-class GuardApp extends StatelessWidget {
-  const GuardApp({super.key, this.state});
+class GuardApp extends StatefulWidget {
+  const GuardApp({super.key, this.state, this.controller});
 
   final GuardState? state;
+  final GuardController? controller;
+
+  @override
+  State<GuardApp> createState() => _GuardAppState();
+}
+
+class _GuardAppState extends State<GuardApp> {
+  late final GuardState _state = widget.state ?? GuardState(onboarded: true);
+  late final GuardController _controller =
+      widget.controller ?? GuardController(state: _state, bridge: FakeBridge(supported: const {}));
 
   @override
   Widget build(BuildContext context) {
-    return GuardScope(
-      state: state ?? GuardState(),
-      child: MaterialApp(
-        title: 'Guard',
-        debugShowCheckedModeBanner: false,
-        theme: GuardTheme.light(),
-        darkTheme: GuardTheme.dark(),
-        themeMode: ThemeMode.system,
-        home: const AdaptiveShell(),
+    return ControllerScope(
+      controller: _controller,
+      child: GuardScope(
+        state: _state,
+        child: MaterialApp(
+          title: 'Guard',
+          debugShowCheckedModeBanner: false,
+          theme: GuardTheme.light(),
+          darkTheme: GuardTheme.dark(),
+          themeMode: ThemeMode.system,
+          home: const _Root(),
+        ),
       ),
     );
+  }
+}
+
+class _Root extends StatelessWidget {
+  const _Root();
+
+  @override
+  Widget build(BuildContext context) {
+    return GuardScope.of(context).onboarded ? const AdaptiveShell() : const OnboardingFlow();
   }
 }

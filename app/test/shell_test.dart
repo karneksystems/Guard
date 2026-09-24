@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guard_app/main.dart';
+import 'package:guard_app/state/guard_state.dart';
 
 Future<void> pumpAt(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(const GuardApp());
+  await tester.pumpWidget(GuardApp(state: GuardState(onboarded: true)));
   await tester.pumpAndSettle();
 }
 

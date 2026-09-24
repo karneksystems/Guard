@@ -65,5 +65,12 @@ back to the last good payload when the network fails). Build with
 `--dart-define=GUARD_API=https://your-backend` to use a backend; without it the app
 runs on sample data.
 
+M2: six-step onboarding (protection, instruments, rule mode, window, gated apps,
+explainer), settings editable afterwards and pushed to the backend, a platform
+bridge with the Android permissions half (usage access, overlay, exact alarm,
+full-screen intent, notifications, battery) and the Home banner that names what's
+missing. Gated app ids never leave the device. The Kotlin side is written but not
+compiled here; the first `flutter build apk` is its check.
+
 Not yet: Drift for the journal and history, the real push senders (M3), the gate
 modules (M4, M5, M7), fonts bundled, store builds. See `docs/MILESTONES.md`.
