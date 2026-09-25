@@ -1,0 +1,123 @@
+name: testflight
+
+# Builds the iOS app on a GitHub Mac, signs it with automatic signing through
+# an App Store Connect API key, and uploads it to TestFlight. No Mac needed on
+# our side. Run from the Actions tab or the API.
+#
+# Secrets (Settings, Secrets and variables, Actions):
+#   ASC_KEY_ID       App Store Connect API key id
+#   ASC_ISSUER_ID    its issuer id
+#   ASC_KEY_P8       the .p8 file's contents, pasted whole
+#   APPLE_TEAM_ID    the team id from developer.apple.com, Membership
+#
+# screen_time: false ships without Family Controls, which is what TestFlight
+# accepts until Apple approves the distribution entitlement. true adds the
+# three Screen Time extensions (app/ios/scripts/screen_time.rb).
+on:
+  workflow_dispatch:
+    inputs:
+      screen_time:
+        description: 'Include the Screen Time gate (needs Apple''s distribution approval)'
+        type: boolean
+        default: false
+
+jobs:
+  upload:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the secrets are set
+        run: |
+          missing=""
+          for v in ASC_KEY_ID ASC_ISSUER_ID APPLE_TEAM_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          [ -n "${{ secrets.ASC_KEY_P8 }}" ] || missing="$missing ASC_KEY_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. See docs/TESTFLIGHT.md."
+            exit 1
+          fi
+
+      - name: Write the API key
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > "$RUNNER_TEMP/keys/AuthKey.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: app
+
+      - uses: ruby/setup-ruby@v1
+        if: inputs.screen_time
+        with:
+          ruby-version: '3.3'
+      - name: Add the Screen Time extensions
+        if: inputs.screen_time
+        run: |
+          gem install xcodeproj --no-document
+          ruby scripts/screen_time.rb
+        working-directory: app/ios
+
+      # Flutter writes Generated.xcconfig (build number, dart-defines); xcodebuild
+      # then archives and signs. GUARD_TESTING shows the test window in Settings.
+      - name: Build the Flutter side
+        run: >
+          flutter build ios --release --no-codesign
+          --build-number=${{ github.run_number }}
+          --dart-define=GUARD_TESTING=true
+        working-directory: app
+
+      - name: Archive with automatic signing
+        run: >
+          xcodebuild archive
+          -workspace ios/Runner.xcworkspace
+          -scheme Runner
+          -configuration Release
+          -destination 'generic/platform=iOS'
+          -archivePath "$RUNNER_TEMP/Runner.xcarchive"
+          -allowProvisioningUpdates
+          -authenticationKeyPath "$ASC_KEY_PATH"
+          -authenticationKeyID "$ASC_KEY_ID"
+          -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+          CODE_SIGN_STYLE=Automatic
+        working-directory: app
+
+      - name: Export and upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+        working-directory: app
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

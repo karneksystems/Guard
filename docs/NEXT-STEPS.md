@@ -29,9 +29,9 @@ In the order that unblocks the most. Each one is short.
    (`APNS_PRIVATE_KEY`, `APNS_KEY_ID`, `APNS_TEAM_ID`). Set
    `GUARD_PUSH_SENDER=live` once both push providers are configured.
 
-5. **Xcode, ten minutes.** Follow `app/ios/SCREEN-TIME-SETUP.md` to add the
-   three extension targets. The Swift is written; Xcode has to create the
-   targets.
+5. **TestFlight, fifteen minutes in a browser.** Follow `docs/TESTFLIGHT.md`:
+   an App ID, an app record, an API key and four GitHub secrets. After that
+   every iPhone build is one click in Actions. No Mac needed.
 
 ## Before the first external tester
 

@@ -79,6 +79,7 @@ class GuardController {
   final StreamController<NotificationTap> opens = StreamController.broadcast(sync: true);
 
   Future<void> start() async {
+    await bridge.loadCapabilities();
     final prefs = await store?.prefs();
     if (prefs != null) {
       if (prefs['onboarded'] == true) state.markOnboarded();
@@ -245,7 +246,7 @@ class GuardController {
   /// window id. The real schedule is restored by the next payload or
   /// settings change.
   Future<String> startTestWindow() async {
-    final opens = _now().toUtc().add(const Duration(minutes: 1));
+    final opens = _now().toUtc().add(const Duration(minutes: 2));
     final closes = opens.add(const Duration(minutes: 2));
     const id = 'test-window-000000000';
     _testWindow = GateWindowSpec(

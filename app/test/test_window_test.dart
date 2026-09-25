@@ -19,11 +19,11 @@ void main() {
     );
     final id = await c.startTestWindow();
     final test = bridge.scheduledWindows.singleWhere((w) => w.windowId == id);
-    expect(test.opensAtMs, DateTime.utc(2026, 9, 24, 18, 1).millisecondsSinceEpoch);
-    expect(test.closesAtMs, DateTime.utc(2026, 9, 24, 18, 3).millisecondsSinceEpoch);
+    expect(test.opensAtMs, DateTime.utc(2026, 9, 24, 18, 2).millisecondsSinceEpoch);
+    expect(test.closesAtMs, DateTime.utc(2026, 9, 24, 18, 4).millisecondsSinceEpoch);
     expect(bridge.scheduledWindows.length, greaterThan(1), reason: 'the sample windows stay');
     final t1 = scheduler.pending.values.singleWhere((n) => n.alertId == 'test:t-1');
-    expect(t1.atUtc, DateTime.utc(2026, 9, 24, 18, 0));
+    expect(t1.atUtc, DateTime.utc(2026, 9, 24, 18, 1));
     expect(t1.channel, 'ladder_urgent');
     expect(scheduler.pending.values.singleWhere((n) => n.alertId == 'test:open').title, 'Restricted: TEST');
   });

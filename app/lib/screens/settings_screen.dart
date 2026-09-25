@@ -11,6 +11,9 @@ import 'paywall_screen.dart';
 import 'permissions_screen.dart';
 import 'tracker_screen.dart';
 
+/// Tester builds (TestFlight, sideloaded CI builds) get the test window too.
+const bool kTesterBuild = bool.fromEnvironment('GUARD_TESTING');
+
 /// Everything from onboarding, editable afterwards. Writes go through the
 /// controller, which applies locally and pushes to the backend.
 class SettingsScreen extends StatelessWidget {
@@ -79,6 +82,7 @@ class SettingsScreen extends StatelessWidget {
           value: state.instruments.map((i) => i['symbol']).join(', '),
           onTap: () => _editInstruments(context, state, c),
         ),
+        if (c.bridge.hasGate)
         _Row(
           key: const Key('setting-gated'),
           label: 'Gated apps',
@@ -137,17 +141,17 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => _deleteEverything(context, c),
           child: const Text('Delete my data'),
         ),
-        if (kDebugMode)
+        if (kDebugMode || kTesterBuild)
           OutlinedButton(
             key: const Key('setting-test-window'),
             onPressed: () async {
               await c.startTestWindow();
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Test window opens in one minute and lasts two. Open a gated app once the alert lands.'),
+                content: Text('Test window opens in two minutes and lasts two. The one-minute alert lands first; open a gated app once the window opens.'),
               ));
             },
-            child: const Text('Start a 2-minute test window (debug)'),
+            child: const Text('Start a 2-minute test window'),
           ),
       ],
     );

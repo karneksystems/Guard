@@ -37,8 +37,9 @@ them for fourteen days under the run's Artifacts.
 
 ## iPhone
 
-Needs the Xcode step in `app/ios/SCREEN-TIME-SETUP.md` and a Mac; there is
-no sideloadable build.
+Through TestFlight, set up once with `docs/TESTFLIGHT.md`. The first builds
+have the alerts and every screen but no gate until Apple approves the Screen
+Time entitlement for distribution.
 
 ## What to write down
 

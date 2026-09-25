@@ -1,8 +1,9 @@
 # iOS Screen Time gate: the Xcode steps
 
-The Swift is written and the app target compiles in CI. The three extension
-targets have to be added in Xcode on a Mac, once, because extension targets are
-not something to hand-edit into a pbxproj. Ten minutes.
+No longer needed for builds: `scripts/screen_time.rb` adds the three extension
+targets on the build machine (the native CI job and the TestFlight workflow
+both run it), so the gate compiles without a Mac. The manual steps below stay
+for anyone who wants the targets in their own Xcode.
 
 Bundle ids: the App IDs registered on 23 Sep 2026 with Family Controls
 (Development) are `com.stanchion.wideberth` plus `.monitor`, `.shieldconfig`

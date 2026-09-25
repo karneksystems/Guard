@@ -114,6 +114,10 @@ abstract class PlatformBridge {
   /// iOS: the OS owns the list. Apple's picker chooses, we hold opaque tokens.
   bool get usesSystemPicker;
 
+  /// Ask the native side what this build can do (iOS: whether it carries the
+  /// Screen Time entitlement). Called once at start, before anything else.
+  Future<void> loadCapabilities();
+
   /// Opens the OS picker. True when the user confirmed a selection.
   Future<bool> pickApps();
 
@@ -152,6 +156,20 @@ class MethodChannelBridge implements PlatformBridge {
   final TargetPlatform _platform;
   final _triggers = StreamController<GateTrigger>.broadcast();
 
+  /// iOS only: whether this build has the Screen Time entitlement and extensions.
+  bool _screenTime = false;
+
+  @override
+  Future<void> loadCapabilities() async {
+    if (_platform != TargetPlatform.iOS) return;
+    try {
+      final caps = await _gate.invokeMapMethod<String, Object?>('capabilities');
+      _screenTime = caps?['screenTime'] == true;
+    } on MissingPluginException {
+      _screenTime = false;
+    }
+  }
+
   @override
   Stream<GateTrigger> get gateTriggers => _triggers.stream;
 
@@ -179,7 +197,7 @@ class MethodChannelBridge implements PlatformBridge {
   @override
   Set<GuardPermission> get supportedPermissions => switch (_platform) {
         TargetPlatform.android => GuardPermission.values.toSet(),
-        TargetPlatform.iOS => {GuardPermission.notifications, GuardPermission.screenTime},
+        TargetPlatform.iOS => {GuardPermission.notifications, if (_screenTime) GuardPermission.screenTime},
         TargetPlatform.windows || TargetPlatform.macOS => {GuardPermission.notifications},
         _ => const {},
       };
@@ -223,12 +241,13 @@ class MethodChannelBridge implements PlatformBridge {
 
   @override
   bool get hasGate => switch (_platform) {
-        TargetPlatform.android || TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.iOS => true,
+        TargetPlatform.android || TargetPlatform.windows || TargetPlatform.macOS => true,
+        TargetPlatform.iOS => _screenTime,
         _ => false,
       };
 
   @override
-  bool get usesSystemPicker => _platform == TargetPlatform.iOS;
+  bool get usesSystemPicker => _platform == TargetPlatform.iOS && _screenTime;
 
   @override
   Future<bool> pickApps() async {
@@ -300,6 +319,9 @@ class FakeBridge implements PlatformBridge {
 
   @override
   bool usesSystemPicker = false;
+
+  @override
+  Future<void> loadCapabilities() async {}
 
   /// What pickApps returns, and how often it was asked.
   bool pickResult = true;

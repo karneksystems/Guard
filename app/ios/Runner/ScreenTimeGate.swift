@@ -13,6 +13,12 @@ import SwiftUI
 /// Apple's Screen Time shield, applied by the GuardMonitor extension; this
 /// class only authorises, lets the user pick apps, and registers schedules.
 final class ScreenTimeGate {
+    /// Off in the plain TestFlight build (no Family Controls entitlement until
+    /// Apple approves distribution); on in the build scripts/screen_time.rb makes.
+    static var enabled: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "GuardScreenTime") as? String) == "YES"
+    }
+
     init(messenger: FlutterBinaryMessenger, controller: FlutterViewController?) {
         // The controller passed at engine init is not yet anyone's root view
         // controller (and never AppDelegate.window's under the scene lifecycle),
@@ -29,6 +35,12 @@ final class ScreenTimeGate {
 
     private func handleGate(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         switch call.method {
+        case "capabilities":
+            result(["screenTime": Self.enabled])
+        case "listApps" where !Self.enabled:
+            result([])
+        case "pickApps" where !Self.enabled, "scheduleWindows" where !Self.enabled:
+            result(call.method == "pickApps" ? false : 0)
         case "listApps":
             result([[
                 "id": "screen-time",
@@ -201,13 +213,15 @@ final class ScreenTimeGate {
                     "notifications": settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional,
                 ]
                 #if canImport(FamilyControls)
-                if #available(iOS 16.0, *) {
+                if !Self.enabled {
+                    // No entitlement in this build: Screen Time isn't something to grant.
+                } else if #available(iOS 16.0, *) {
                     status["screenTime"] = AuthorizationCenter.shared.authorizationStatus == .approved
                 } else {
-                    status["screenTime"] = false
+                    status["screenTime"] = false // iOS 15: no Family Controls for individuals
                 }
                 #else
-                status["screenTime"] = false
+                if Self.enabled { status["screenTime"] = false }
                 #endif
                 DispatchQueue.main.async { result(status) }
             }
@@ -215,7 +229,8 @@ final class ScreenTimeGate {
             let name = (call.arguments as? [String: Any])?["name"] as? String
             switch name {
             case "notifications":
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .timeSensitive]) { _, _ in
+                // Time Sensitive comes from the entitlement, not from an authorization option.
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
                     DispatchQueue.main.async { result(nil) }
                 }
             case "screenTime":

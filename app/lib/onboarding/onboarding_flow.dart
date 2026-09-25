@@ -151,7 +151,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         title: 'Which apps to gate?',
         subtitle: 'This stays on your device. We never send it anywhere.',
         child: Column(children: [
-          if (c.bridge.usesSystemPicker) ...[
+          if (!c.bridge.hasGate)
+            Text('This build can\'t cover apps on this device yet. The alerts still work, and the gate arrives with the next build.', style: text.bodyMedium)
+          else if (c.bridge.usesSystemPicker) ...[
             Text('Apple\'s Screen Time picker chooses the apps. We only ever hold a token; not even we learn which apps you picked.', style: text.bodyMedium),
             const SizedBox(height: 12),
             FilledButton.tonal(
