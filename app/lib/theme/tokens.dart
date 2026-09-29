@@ -1,36 +1,40 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens from the total brief: OTTO craft on cool ink. Poppins display,
-/// Inter body, metal accent #AE9558, champagne hairlines, flat metal buttons.
-/// No greens anywhere, including status chips: status is metal or cool grey.
-/// This is the only file that names a colour or a font family.
+/// Design tokens. Guard's blue and sky blue, with amber for "news soon" and red
+/// for "window open". Poppins display, Inter body. This is the only file that
+/// names a colour or a font family; the native gate screens, the Screen Time
+/// card and the Live Activity mirror these values by hand.
 abstract final class Tokens {
-  // Metal and champagne
-  static const Color metal = Color(0xFFAE9558);
-  static const Color metalDeep = Color(0xFF8A7440);
-  static const Color champagne = Color(0xFFE8DCC0);
-  static const Color champagneHairline = Color(0x66E8DCC0);
+  // Brand
+  static const Color brand = Color(0xFF0B5CAD);
+  static const Color brandDeep = Color(0xFF08306B);
+  static const Color sky = Color(0xFF5BC8F5);
+  static const Color skyHairline = Color(0x555BC8F5);
 
-  // Cool ink (dark)
-  static const Color inkBg = Color(0xFF0F1216);
-  static const Color inkSurface = Color(0xFF161B21);
-  static const Color inkSurfaceRaised = Color(0xFF1E252D);
-  static const Color inkText = Color(0xFFEDEFF2);
-  static const Color inkTextMuted = Color(0xFF9AA3AE);
-  static const Color inkHairline = Color(0xFF2A333D);
+  // High impact accents
+  static const Color amber = Color(0xFFF5A524);
+  static const Color red = Color(0xFFE5484D);
+
+  // Cool ink (dark), tinted towards the brand navy
+  static const Color inkBg = Color(0xFF0A1220);
+  static const Color inkSurface = Color(0xFF101A2B);
+  static const Color inkSurfaceRaised = Color(0xFF16233A);
+  static const Color inkText = Color(0xFFEDF2F8);
+  static const Color inkTextMuted = Color(0xFF9AA8BA);
+  static const Color inkHairline = Color(0xFF223250);
 
   // Cool paper (light)
-  static const Color paperBg = Color(0xFFF4F5F7);
+  static const Color paperBg = Color(0xFFF3F7FC);
   static const Color paperSurface = Color(0xFFFFFFFF);
-  static const Color paperSurfaceRaised = Color(0xFFEDEFF2);
-  static const Color paperText = Color(0xFF14181D);
-  static const Color paperTextMuted = Color(0xFF5B6673);
-  static const Color paperHairline = Color(0xFFD9DEE4);
+  static const Color paperSurfaceRaised = Color(0xFFE8F0FA);
+  static const Color paperText = Color(0xFF0E1A2B);
+  static const Color paperTextMuted = Color(0xFF55657A);
+  static const Color paperHairline = Color(0xFFD6E0EC);
 
-  // Status. Restricted is metal, not red; clear is cool grey, not green.
-  static const Color statusRestricted = metal;
+  // Status. Restricted is red, soon is amber, clear is cool grey.
+  static const Color statusRestricted = red;
   static const Color statusClear = Color(0xFF7C8794);
-  static const Color statusWarn = Color(0xFFC98F3B);
+  static const Color statusWarn = amber;
 
   static const String displayFamily = 'Poppins';
   static const String bodyFamily = 'Inter';
@@ -59,9 +63,9 @@ abstract final class GuardTheme {
 
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: Tokens.metal,
-      onPrimary: Tokens.inkBg,
-      secondary: Tokens.champagne,
+      primary: dark ? Tokens.sky : Tokens.brand,
+      onPrimary: dark ? Tokens.inkBg : Colors.white,
+      secondary: Tokens.sky,
       onSecondary: Tokens.inkBg,
       error: Tokens.statusWarn,
       onError: Tokens.inkBg,
@@ -69,7 +73,7 @@ abstract final class GuardTheme {
       onSurface: text,
       surfaceContainerHighest: raised,
       outline: hairline,
-      outlineVariant: Tokens.champagneHairline,
+      outlineVariant: Tokens.skyHairline,
     );
 
     final display = TextStyle(fontFamily: Tokens.displayFamily, color: text, fontWeight: FontWeight.w600);
@@ -91,20 +95,20 @@ abstract final class GuardTheme {
         bodySmall: body.copyWith(fontSize: 13, color: muted),
         labelLarge: body.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
       ),
-      dividerColor: Tokens.champagneHairline,
+      dividerColor: Tokens.skyHairline,
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Tokens.radius),
-          side: const BorderSide(color: Tokens.champagneHairline),
+          side: const BorderSide(color: Tokens.skyHairline),
         ),
         margin: EdgeInsets.zero,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: Tokens.metal,
-          foregroundColor: Tokens.inkBg,
+          backgroundColor: Tokens.brand,
+          foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size(64, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tokens.radius)),
@@ -114,7 +118,7 @@ abstract final class GuardTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: text,
-          side: const BorderSide(color: Tokens.metal),
+          side: const BorderSide(color: Tokens.brand),
           minimumSize: const Size(64, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tokens.radius)),
           textStyle: body.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
@@ -122,12 +126,12 @@ abstract final class GuardTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
-        indicatorColor: Tokens.metal.withValues(alpha: 0.18),
+        indicatorColor: Tokens.brand.withValues(alpha: 0.18),
         labelTextStyle: WidgetStatePropertyAll(body.copyWith(fontSize: 12)),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: surface,
-        indicatorColor: Tokens.metal.withValues(alpha: 0.18),
+        indicatorColor: Tokens.brand.withValues(alpha: 0.18),
         selectedLabelTextStyle: body.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
         unselectedLabelTextStyle: body.copyWith(fontSize: 13, color: muted),
       ),

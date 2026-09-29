@@ -30,7 +30,7 @@ class PermissionsScreen extends StatelessWidget {
                 title: Text(p.label),
                 subtitle: Text(p.why),
                 trailing: state.permissions[p] == true
-                    ? const Icon(Icons.check, color: Tokens.metal)
+                    ? const Icon(Icons.check, color: Tokens.brand)
                     : OutlinedButton(
                         key: Key('grant-${p.name}'),
                         onPressed: () => c.requestPermission(p),

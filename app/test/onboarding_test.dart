@@ -49,58 +49,48 @@ void main() {
   testWidgets('a new install lands on onboarding, not Home', (tester) async {
     final h = Harness();
     await pump(tester, h.app());
-    expect(find.text('How should it protect you?'), findsOneWidget);
+    expect(find.text('What do you trade?'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('walking through the six steps writes settings, instruments, gated apps and the flag', (tester) async {
+  testWidgets('the three steps write settings, instruments, gated apps and the flag', (tester) async {
     final h = Harness();
     await pump(tester, h.app());
 
-    // 1 protection: keep soft gate (default). Hard block is disabled on Free.
-    final hard = tester.widget<RadioListTile<String>>(find.byKey(const Key('choice-hard-block')));
-    expect(hard.enabled, isFalse);
-    await tester.tap(find.byKey(const Key('onboarding-next')));
-    await tester.pumpAndSettle();
-
-    // 2 instruments: gold is preselected; add EURUSD; a third is refused on Free.
+    // 1 instruments: gold is preselected; add EURUSD; a third is disabled on Free.
     await tester.tap(find.byKey(const Key('inst-EURUSD')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('inst-GBPUSD')));
-    await tester.pumpAndSettle();
+    final gbp = tester.widget<FilterChip>(find.byKey(const Key('inst-GBPUSD')));
+    expect(gbp.onSelected, isNull);
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
-    // 3 rules: conservative (firm match disabled on Free)
-    final firm = tester.widget<RadioListTile<String>>(find.byKey(const Key('choice-firm-match')));
-    expect(firm.enabled, isFalse);
-    await tester.tap(find.byKey(const Key('onboarding-next')));
+    // 2 alerts: one button, then the apps to cover. MT5 is on by default.
+    expect(find.text('Skip for now'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-allow-notifications')));
     await tester.pumpAndSettle();
-
-    // 4 window: fixed on Free
-    final ten = tester.widget<ChoiceChip>(find.byKey(const Key('window-10')));
-    expect(ten.onSelected, isNull);
-    await tester.tap(find.byKey(const Key('onboarding-next')));
-    await tester.pumpAndSettle();
-
-    // 5 gated apps: MT5 on by default, add cTrader
-    expect(find.byKey(const Key('gate-net.metaquotes.metatrader5')), findsOneWidget);
+    expect(h.bridge.requested, [GuardPermission.notifications]);
+    expect(find.byKey(const Key('onboarding-notifications-on')), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const Key('gate-net.metaquotes.metatrader5'))).value, isTrue);
     await tester.tap(find.byKey(const Key('gate-com.spotware.ct')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
-    // 6 explainer
-    expect(find.text('We never touch your trades.'), findsOneWidget);
+    // 3 you're set
+    expect(find.text("You're set"), findsOneWidget);
+    expect(find.text('Guard never touches your trades, your account or your broker.'), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
-    // Landed on Home
+    // Landed on Home with the safe defaults.
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(h.state.onboarded, isTrue);
     expect(h.state.instruments.map((i) => i['symbol']), ['XAUUSD', 'EURUSD']);
     expect(h.state.gatedAppIds.toSet(), {'net.metaquotes.metatrader5', 'com.spotware.ct'});
     expect(h.state.settings['protection'], 'soft-gate');
+    expect(h.state.settings['mode'], 'conservative');
 
     // Wire: one settings PUT and one instruments PUT, snake_case on settings.
     final puts = h.requests.where((r) => r.method == 'PUT').toList();
@@ -117,7 +107,25 @@ void main() {
     expect((prefs['gatedApps'] as List).length, 2);
     for (final r in h.requests) {
       expect(r.body.contains('metaquotes'), isFalse, reason: 'gated app ids must never leave the device');
+      expect(r.body.contains('spotware'), isFalse, reason: 'gated app ids must never leave the device');
     }
+  });
+
+  testWidgets('with alerts refused, step two offers a skip and setup still finishes', (tester) async {
+    final h = Harness(granted: {for (final p in GuardPermission.values) p: false});
+    await pump(tester, h.app());
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('onboarding-allow-notifications')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('onboarding-notifications-on')), findsNothing);
+    expect(find.text('Skip for now'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('onboarding-next')));
+    await tester.pumpAndSettle();
+    expect(h.state.onboarded, isTrue);
+    expect(h.state.instruments.map((i) => i['symbol']), ['XAUUSD']);
   });
 
   testWidgets('an onboarded install goes straight to Home and the banner shows missing permissions', (tester) async {

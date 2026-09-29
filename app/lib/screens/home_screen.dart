@@ -199,17 +199,17 @@ class _NextWindowCardState extends State<_NextWindowCard> {
       child: Padding(
         padding: const EdgeInsets.all(Tokens.gutter),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(w == null ? 'ALL CLEAR' : 'NEXT WINDOW', style: text.bodySmall?.copyWith(letterSpacing: 1.2, color: Tokens.metal)),
+          Text(w == null ? 'ALL CLEAR' : 'NEXT WINDOW', style: text.bodySmall?.copyWith(letterSpacing: 1.2, color: Tokens.brand)),
           const SizedBox(height: 6),
           Text(w == null ? 'Nothing scheduled' : w.instrument, style: text.displayMedium),
           if (w != null) ...[
-            Text(countdown(w, now), key: const Key('home-countdown'), style: text.titleMedium?.copyWith(color: Tokens.metal)),
+            Text(countdown(w, now), key: const Key('home-countdown'), style: text.titleMedium?.copyWith(color: Tokens.brand)),
             const SizedBox(height: 4),
             Text(w.reasons.map(titleFor).join(' · '), style: text.bodyLarge),
             const SizedBox(height: 4),
             Text('${_hhmm(w.opensAtUtc)} to ${_hhmm(w.closesAtUtc)} UTC', style: text.bodySmall),
             const SizedBox(height: 2),
-            Text(w.reasons.map(sourceFor).toSet().join(' · '), style: text.bodySmall?.copyWith(color: Tokens.metal)),
+            Text(w.reasons.map(sourceFor).toSet().join(' · '), style: text.bodySmall?.copyWith(color: Tokens.brand)),
           ],
         ]),
       ),

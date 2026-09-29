@@ -395,7 +395,7 @@ class _Row extends StatelessWidget {
       trailing: Text(value, style: text.bodySmall),
       onTap: onTap,
       enabled: onTap != null,
-      shape: const Border(bottom: BorderSide(color: Tokens.champagneHairline)),
+      shape: const Border(bottom: BorderSide(color: Tokens.skyHairline)),
     );
   }
 }

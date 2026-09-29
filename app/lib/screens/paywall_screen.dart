@@ -76,7 +76,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.check, size: 18, color: Tokens.metal),
+                const Icon(Icons.check, size: 18, color: Tokens.brand),
                 const SizedBox(width: 8),
                 Expanded(child: Text(line)),
               ]),

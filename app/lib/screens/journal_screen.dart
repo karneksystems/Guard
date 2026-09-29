@@ -42,7 +42,7 @@ class JournalScreen extends StatelessWidget {
                   'viewed' => Icons.visibility_outlined,
                   _ => Icons.warning_amber_outlined,
                 },
-                color: e.outcome == 'traded-anyway' ? Tokens.statusWarn : Tokens.metal,
+                color: e.outcome == 'traded-anyway' ? Tokens.statusWarn : Tokens.brand,
               ),
               title: Text(switch (e.outcome) {
                 'stayed-out' => 'Stayed out',
@@ -58,7 +58,7 @@ class JournalScreen extends StatelessWidget {
                       child: const Text('I traded'),
                     )
                   : null,
-              shape: const Border(bottom: BorderSide(color: Tokens.champagneHairline)),
+              shape: const Border(bottom: BorderSide(color: Tokens.skyHairline)),
             ),
         if (!state.pro && state.journal.length > entries.length) ...[
           const SizedBox(height: Tokens.gutter),

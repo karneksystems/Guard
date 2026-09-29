@@ -94,7 +94,7 @@ class _GateScreenState extends State<GateScreen> {
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('RESTRICTED WINDOW', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.metal, fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w700)),
+                const Text('RESTRICTED WINDOW', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.brand, fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 Text('$mm:$ss', key: const Key('gate-countdown'), style: const TextStyle(fontFamily: Tokens.displayFamily, color: Tokens.inkText, fontSize: 96, height: 1, fontWeight: FontWeight.w600, letterSpacing: -2)),
                 const SizedBox(height: 16),
