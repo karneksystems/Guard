@@ -54,13 +54,14 @@ jobs:
           channel: stable
       - run: flutter pub get
         working-directory: app
-      # The Screen Time build is a superset of the plain one: same Runner code
-      # plus the three extensions, so this compiles everything iOS has.
+      # The full build is a superset of the plain one: same Runner code plus the
+      # three Screen Time extensions and the Lock Screen countdown, so this
+      # compiles everything iOS has.
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
       - run: gem install xcodeproj --no-document
-      - run: ruby scripts/screen_time.rb
+      - run: ruby scripts/screen_time.rb && ruby scripts/live_activity.rb
         working-directory: app/ios
       - run: flutter build ios --debug --no-codesign
         working-directory: app

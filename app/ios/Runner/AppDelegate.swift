@@ -14,10 +14,12 @@ import UserNotifications
   }
 
   private var gate: ScreenTimeGate?
+  private var live: LiveCountdown?
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let controller = window?.rootViewController as? FlutterViewController
     gate = ScreenTimeGate(messenger: engineBridge.applicationRegistrar.messenger(), controller: controller)
+    live = LiveCountdown(messenger: engineBridge.applicationRegistrar.messenger())
   }
 }

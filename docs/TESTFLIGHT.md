@@ -56,6 +56,11 @@ worth checking first.
 It runs on the sample calendar (windows on 1 and 2 October) because the
 server isn't deployed yet, and it has no gate: TestFlight refuses the Screen
 Time entitlement until Apple approves the distribution request filed on
-23 September. When Apple says yes, run the workflow with "Include the Screen
-Time gate" ticked; `app/ios/scripts/screen_time.rb` adds the three extensions
-on the build machine.
+23 September. Apple has since said yes. Once the extension App IDs in
+LOCAL-REQUESTS.md exist, run the workflow with "Include the Screen Time gate"
+ticked; `app/ios/scripts/screen_time.rb` adds the three extensions on the build
+machine. "Include the Lock Screen countdown" does the same for the Live
+Activity (`app/ios/scripts/live_activity.rb`) once
+`com.stanchion.guard.liveactivity` exists. Both boxes stay off until then:
+automatic signing can register a plain App ID by itself, but not one with
+Family Controls, and we'd rather the IDs are registered on purpose.

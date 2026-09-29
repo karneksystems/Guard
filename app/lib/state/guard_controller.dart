@@ -175,6 +175,8 @@ class GuardController {
     if (age == null || age > staleAfter) await resync();
     await drainGateJournal();
     await refreshPermissions();
+    // The clock moved while we were away: the glow and the countdown re-read it.
+    scheduleChanged.value++;
   }
 
   /// A new payload: state, the local mirror of its ladder, the platform gate.
@@ -313,6 +315,49 @@ class GuardController {
 
   /// Clear, soon or live, right now.
   NewsNow newsNow() => newsAt(newsSpans, _now().toUtc());
+
+  /// How far ahead the Lock Screen countdown starts. The t-60 alert is the
+  /// natural moment the trader opens the app.
+  static const countdownLead = Duration(minutes: 60);
+
+  /// The same question an hour out, for the Lock Screen countdown.
+  NewsNow countdownNow() => newsAt(newsSpans, _now().toUtc(), lead: countdownLead);
+
+  String? _countdownKey;
+
+  /// Start, move on or end the Lock Screen countdown. Only what changed goes
+  /// to the OS: a new window, or a new phase for the same one. Called by the
+  /// glow whenever it re-reads the clock, which is only while the app runs;
+  /// until push-to-start exists that's the honest limit.
+  Future<void> syncCountdown() async {
+    if (!state.onboarded) return;
+    final now = _now().toUtc();
+    final news = countdownNow();
+    final span = news.span;
+    final phase = switch (news.phase) {
+      NewsPhase.clear => 'clear',
+      NewsPhase.live => 'live',
+      NewsPhase.soon => span!.opens.difference(now) <= const Duration(minutes: 5) ? 'soon' : 'upcoming',
+    };
+    final key = '$phase|${span?.windowId}';
+    if (key == _countdownKey) return;
+    // Nothing on screen and nothing to show: don't wake the native side.
+    if (_countdownKey == null && phase == 'clear') {
+      _countdownKey = key;
+      return;
+    }
+    _countdownKey = key;
+    await bridge.syncCountdown(span == null
+        ? const CountdownSpec.clear()
+        : CountdownSpec(
+            phase: phase,
+            windowId: span.windowId,
+            instrument: span.instrument,
+            events: span.events,
+            opensAtMs: span.opens.millisecondsSinceEpoch,
+            closesAtMs: span.closes.millisecondsSinceEpoch,
+          ));
+  }
 
   /// The clock, injectable for tests.
   DateTime get now => _now();

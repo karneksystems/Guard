@@ -42,7 +42,8 @@ void main() {
   testWidgets('the edge glows amber before the test window and red while it is open', (tester) async {
     var clock = t0;
     final state = GuardState(onboarded: true, now: () => clock);
-    final controller = GuardController(state: state, bridge: FakeBridge(), now: () => clock);
+    final bridge = FakeBridge();
+    final controller = GuardController(state: state, bridge: bridge, now: () => clock);
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -65,5 +66,46 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('news-glow-live')), findsNothing);
     expect(find.byKey(const Key('news-glow-soon')), findsNothing);
+
+    // The Lock Screen countdown followed along: nothing sent while clear, then
+    // amber, red and clear, each once.
+    expect(bridge.countdowns.map((c) => c.phase), ['soon', 'live', 'clear']);
+    expect(bridge.countdowns.first.windowId, 'test-window-000000000');
+    expect(bridge.countdowns.first.events, 'Test window');
+    expect(bridge.countdowns.first.opensAtMs, t0.add(const Duration(minutes: 2)).millisecondsSinceEpoch);
+  });
+
+  testWidgets('the countdown starts an hour out in sky and turns amber at five minutes', (tester) async {
+    // The sample calendar's EUR CPI at 09:00 UTC on 1 Oct gives XAUUSD a window.
+    final opens = DateTime.parse(GuardState(onboarded: true).windows.first.opensAtUtc).toUtc();
+    var clock = opens.subtract(const Duration(minutes: 90));
+    final state = GuardState(onboarded: true, now: () => clock);
+    final bridge = FakeBridge();
+    final controller = GuardController(state: state, bridge: bridge, now: () => clock);
+    await tester.pumpWidget(GuardApp(state: state, controller: controller));
+    await tester.pumpAndSettle();
+    expect(bridge.countdowns, isEmpty);
+
+    clock = opens.subtract(const Duration(minutes: 59));
+    await tester.pump(const Duration(minutes: 31));
+    await tester.pumpAndSettle();
+    expect(bridge.countdowns.map((c) => c.phase), ['upcoming']);
+
+    clock = opens.subtract(const Duration(minutes: 4, seconds: 59));
+    await tester.pump(const Duration(minutes: 55));
+    await tester.pumpAndSettle();
+    expect(bridge.countdowns.map((c) => c.phase), ['upcoming', 'soon']);
+    expect(find.byKey(const Key('news-glow-soon')), findsOneWidget);
+  });
+
+  testWidgets('nothing reaches the Lock Screen before onboarding', (tester) async {
+    var clock = t0;
+    final state = GuardState(now: () => clock);
+    final bridge = FakeBridge();
+    final controller = GuardController(state: state, bridge: bridge, now: () => clock);
+    await tester.pumpWidget(GuardApp(state: state, controller: controller));
+    await controller.startTestWindow();
+    await tester.pumpAndSettle();
+    expect(bridge.countdowns, isEmpty);
   });
 }

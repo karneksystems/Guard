@@ -135,6 +135,47 @@ abstract class PlatformBridge {
 
   /// Outcomes recorded by the gate since the last drain. Clears them.
   Future<List<GateOutcome>> drainJournal();
+
+  /// iOS: start, move on or end the Lock Screen countdown. A no-op elsewhere,
+  /// and on builds without the GuardLiveActivity extension.
+  Future<void> syncCountdown(CountdownSpec spec);
+}
+
+/// What the Lock Screen countdown should show. [phase] is upcoming (an hour
+/// out, sky), soon (five minutes, amber), live (open, red) or clear.
+class CountdownSpec {
+  const CountdownSpec.clear()
+      : phase = 'clear',
+        windowId = null,
+        instrument = null,
+        events = null,
+        opensAtMs = null,
+        closesAtMs = null;
+
+  const CountdownSpec({
+    required this.phase,
+    required String this.windowId,
+    required String this.instrument,
+    required String this.events,
+    required int this.opensAtMs,
+    required int this.closesAtMs,
+  });
+
+  final String phase;
+  final String? windowId;
+  final String? instrument;
+  final String? events;
+  final int? opensAtMs;
+  final int? closesAtMs;
+
+  Map<String, Object?> toMap() => {
+        'phase': phase,
+        'windowId': windowId,
+        'instrument': instrument,
+        'events': events,
+        'opensAtMs': opensAtMs,
+        'closesAtMs': closesAtMs,
+      };
 }
 
 /// Android and, later, Windows and macOS. iOS has no gate to grant permissions
@@ -152,6 +193,7 @@ class MethodChannelBridge implements PlatformBridge {
 
   static const _gate = MethodChannel('guard/gate');
   static const _permissions = MethodChannel('guard/permissions');
+  static const _live = MethodChannel('guard/live');
 
   final TargetPlatform _platform;
   final _triggers = StreamController<GateTrigger>.broadcast();
@@ -294,6 +336,18 @@ class MethodChannelBridge implements PlatformBridge {
       return const [];
     }
   }
+
+  @override
+  Future<void> syncCountdown(CountdownSpec spec) async {
+    if (_platform != TargetPlatform.iOS) return;
+    try {
+      await _live.invokeMethod<bool>('sync', spec.toMap());
+    } on MissingPluginException {
+      // Not registered: a build without the countdown.
+    } on PlatformException {
+      // The OS refused; the notifications still cover it.
+    }
+  }
 }
 
 /// Deterministic stand-in. Tests flip permissions; sample mode gets MT5 only.
@@ -336,6 +390,12 @@ class FakeBridge implements PlatformBridge {
   final Map<GuardPermission, bool> _granted;
   final List<GateableApp> _apps;
   final List<GuardPermission> requested = [];
+
+  /// Every countdown the controller asked for, in order.
+  final List<CountdownSpec> countdowns = [];
+
+  @override
+  Future<void> syncCountdown(CountdownSpec spec) async => countdowns.add(spec);
 
   /// What the last scheduleGateWindows call handed over.
   List<GateWindowSpec> scheduledWindows = const [];

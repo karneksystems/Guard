@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>GuardLiveActivity</key>
+	<string>$(GUARD_LIVE_ACTIVITY)</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>GuardScreenTime</key>
 	<string>$(GUARD_SCREEN_TIME)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

@@ -9,7 +9,7 @@ them for fourteen days under the run's Artifacts.
    green `ci` run, Artifacts, `guard-android-debug`. Download and unzip
    (Files app handles it), then open `app-debug.apk`. Allow installs from
    Chrome or Files when asked.
-2. Open the app. Walk through the six onboarding steps. Grant every
+2. Open the app. Walk through the three setup steps. Grant every
    permission on the permissions screen: notifications, usage access, display
    over other apps, alarms, full-screen alerts, battery unrestricted.
 3. There is no backend in this build, so Home runs on the sample calendar:

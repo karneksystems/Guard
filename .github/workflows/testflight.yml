@@ -10,14 +10,19 @@ name: testflight
 #   ASC_KEY_P8       the .p8 file's contents, pasted whole
 #   APPLE_TEAM_ID    the team id from developer.apple.com, Membership
 #
-# screen_time: false ships without Family Controls, which is what TestFlight
-# accepts until Apple approves the distribution entitlement. true adds the
-# three Screen Time extensions (app/ios/scripts/screen_time.rb).
+# screen_time adds the three Screen Time extensions (scripts/screen_time.rb)
+# and live_activity adds the Lock Screen countdown (scripts/live_activity.rb).
+# Tick either only once its App IDs exist (docs/LOCAL-REQUESTS.md); automatic
+# signing can't add Family Controls to an App ID by itself.
 on:
   workflow_dispatch:
     inputs:
       screen_time:
         description: 'Include the Screen Time gate (needs Apple''s distribution approval)'
+        type: boolean
+        default: false
+      live_activity:
+        description: 'Include the Lock Screen countdown (needs com.stanchion.guard.liveactivity)'
         type: boolean
         default: false
 
@@ -57,14 +62,19 @@ jobs:
         working-directory: app
 
       - uses: ruby/setup-ruby@v1
-        if: inputs.screen_time
+        if: inputs.screen_time || inputs.live_activity
         with:
           ruby-version: '3.3'
+      - name: Install xcodeproj
+        if: inputs.screen_time || inputs.live_activity
+        run: gem install xcodeproj --no-document
       - name: Add the Screen Time extensions
         if: inputs.screen_time
-        run: |
-          gem install xcodeproj --no-document
-          ruby scripts/screen_time.rb
+        run: ruby scripts/screen_time.rb
+        working-directory: app/ios
+      - name: Add the Lock Screen countdown
+        if: inputs.live_activity
+        run: ruby scripts/live_activity.rb
         working-directory: app/ios
 
       # Flutter writes Generated.xcconfig (build number, dart-defines); xcodebuild

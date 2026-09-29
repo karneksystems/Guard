@@ -12,7 +12,8 @@ import '../theme/tokens.dart';
 /// A coloured edge around the whole app while news is near: amber in the five
 /// minutes before a window, red while it's open. It never takes a tap and it
 /// never animates on a loop; it fades in once and sits still, and one timer
-/// wakes it at the next change instead of polling.
+/// wakes it at the next change instead of polling. The same wake keeps the
+/// Lock Screen countdown in step while the app is open.
 class NewsGlow extends StatefulWidget {
   const NewsGlow({super.key, required this.child});
 
@@ -47,10 +48,11 @@ class _NewsGlowState extends State<NewsGlow> {
     if (mounted) setState(() {});
   }
 
-  void _armFor(NewsNow news) {
+  void _armFor(List<DateTime?> changes) {
     _wake?.cancel();
-    final at = news.nextChange;
-    if (at == null) return;
+    final times = changes.whereType<DateTime>().toList()..sort();
+    if (times.isEmpty) return;
+    final at = times.first;
     // A second past the boundary, so the next read lands on the new side of it.
     final wait = at.difference(_controller!.now.toUtc()) + const Duration(seconds: 1);
     _wake = Timer(wait.isNegative ? Duration.zero : wait, _changed);
@@ -59,8 +61,11 @@ class _NewsGlowState extends State<NewsGlow> {
   @override
   Widget build(BuildContext context) {
     GuardScope.of(context); // rebuild when the windows change
-    final news = _controller!.newsNow();
-    _armFor(news);
+    final c = _controller!;
+    final news = c.newsNow();
+    // Wake for whichever comes first: the glow's next change or the countdown's.
+    _armFor([news.nextChange, c.countdownNow().nextChange]);
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(c.syncCountdown()));
     final color = switch (news.phase) {
       NewsPhase.live => Tokens.red,
       NewsPhase.soon => Tokens.amber,
