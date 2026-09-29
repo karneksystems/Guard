@@ -14,6 +14,7 @@ import 'notifications/reminders.dart';
 import 'onboarding/onboarding_flow.dart';
 import 'platform/platform_bridge.dart';
 import 'shell/adaptive_shell.dart';
+import 'shell/news_glow.dart';
 import 'state/guard_controller.dart';
 import 'state/guard_state.dart';
 import 'sync/api_client.dart';
@@ -116,6 +117,7 @@ class _GuardAppState extends State<GuardApp> with WidgetsBindingObserver {
           darkTheme: GuardTheme.dark(),
           themeMode: ThemeMode.system,
           home: widget.home ?? const _Root(),
+          builder: (context, child) => NewsGlow(child: child ?? const SizedBox.shrink()),
         ),
       ),
     );

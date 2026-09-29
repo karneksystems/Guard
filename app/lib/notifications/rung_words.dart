@@ -16,7 +16,7 @@ class RungWords {
     required String opensHhmm,
     required String closesHhmm,
   }) {
-    final events = eventTitles.isEmpty ? 'a high-impact release' : eventTitles.take(2).join(', ');
+    final events = eventTitles.isEmpty ? 'High impact news' : eventTitles.take(2).join(', ');
     final channel = (kind == 't-1' || kind == 'open') ? 'ladder_urgent' : 'ladder';
     return switch (kind) {
       't-60' => RungWords('$instrument window in 60 min', '$events. Restricted $opensHhmm to $closesHhmm UTC.', channel),

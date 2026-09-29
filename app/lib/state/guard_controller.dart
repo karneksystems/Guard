@@ -16,6 +16,7 @@ import '../sync/sync_payload.dart';
 import '../sync/sync_service.dart';
 import '../sync/sync_store.dart';
 import 'guard_state.dart';
+import 'news_phase.dart';
 
 /// The one place screens write through. Applies a change locally first so the UI
 /// never waits on the network, then pushes it to the backend when there is one.
@@ -68,6 +69,10 @@ class GuardController {
 
   /// The debug test window, kept in the gate schedule until it closes.
   GateWindowSpec? _testWindow;
+
+  /// Ticks whenever the schedule the gate sees changes, the test window
+  /// included, so the glow and the countdown re-read [newsNow].
+  final ValueNotifier<int> scheduleChanged = ValueNotifier(0);
 
   Future<T> _locked<T>(Future<T> Function() op) {
     final next = _serial.then((_) => op());
@@ -286,6 +291,29 @@ class GuardController {
     );
   }
 
+  /// Every window the device knows, the test window included, as spans.
+  List<NewsSpan> get newsSpans => [
+        for (final w in state.windows)
+          NewsSpan(
+            windowId: w.windowId,
+            instrument: w.instrument,
+            events: w.reasons.map(state.eventLabel).join(', '),
+            opens: DateTime.parse(w.opensAtUtc).toUtc(),
+            closes: DateTime.parse(w.closesAtUtc).toUtc(),
+          ),
+        if (_testWindow case final t?)
+          NewsSpan(
+            windowId: t.windowId,
+            instrument: t.instrument,
+            events: t.events,
+            opens: DateTime.fromMillisecondsSinceEpoch(t.opensAtMs, isUtc: true),
+            closes: DateTime.fromMillisecondsSinceEpoch(t.closesAtMs, isUtc: true),
+          ),
+      ];
+
+  /// Clear, soon or live, right now.
+  NewsNow newsNow() => newsAt(newsSpans, _now().toUtc());
+
   /// The clock, injectable for tests.
   DateTime get now => _now();
 
@@ -305,6 +333,7 @@ class GuardController {
   /// Hand the device engine's windows to the platform gate, with the gated app
   /// ids and the protection mode. Called after every payload and settings change.
   Future<int> pushGateSchedule() async {
+    scheduleChanged.value++;
     if (!bridge.hasGate) return 0;
     final windows = state.windows
         .map((w) => GateWindowSpec(
@@ -312,7 +341,7 @@ class GuardController {
               opensAtMs: DateTime.parse(w.opensAtUtc).toUtc().millisecondsSinceEpoch,
               closesAtMs: DateTime.parse(w.closesAtUtc).toUtc().millisecondsSinceEpoch,
               instrument: w.instrument,
-              events: w.reasons.map(state.titleFor).join(', '),
+              events: w.reasons.map(state.eventLabel).join(', '),
             ))
         .toList();
     final test = _testWindow;

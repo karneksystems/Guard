@@ -35,7 +35,7 @@ final class RungMessage
         $reasons = $window
             ? CalendarEvent::query()->whereIn('id', $window->reasons)->orderBy('scheduled_at_utc')->pluck('title')->all()
             : [];
-        $events = $reasons === [] ? 'a high-impact release' : implode(', ', array_slice($reasons, 0, 2));
+        $events = $reasons === [] ? 'High impact news' : implode(', ', array_slice($reasons, 0, 2));
 
         [$title, $body] = match ($rung->kind) {
             't-60' => ["$instrument window in 60 min", "$events. Restricted $opens to $closes UTC."],

@@ -91,7 +91,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         _Row(
           key: const Key('setting-digest'),
-          label: 'Night-before digest',
+          label: 'Night before digest',
           value: s['digestLocalTime'] as String? ?? '20:00',
           onTap: () async {
             final now = TimeOfDay(
@@ -148,7 +148,7 @@ class SettingsScreen extends StatelessWidget {
               await c.startTestWindow();
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Test window opens in two minutes and lasts two. The one-minute alert lands first; open a gated app once the window opens.'),
+                content: Text('Test window opens in two minutes and lasts two. The one minute alert lands first, then open a gated app once the window opens.'),
               ));
             },
             child: const Text('Start a 2-minute test window'),

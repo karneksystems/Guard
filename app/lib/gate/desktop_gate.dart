@@ -64,7 +64,7 @@ class DesktopGate {
       fullscreenDialog: true,
       builder: (_) => GateScreen(
         instrument: w.instrument,
-        events: w.reasons.map(state.titleFor).join(', '),
+        events: w.reasons.map(state.eventLabel).join(', '),
         closesAtUtc: closes,
         hardBlock: protection == 'hard-block',
         now: now,

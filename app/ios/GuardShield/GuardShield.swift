@@ -24,27 +24,32 @@ final class GuardShield: ShieldConfigurationDataSource {
 
     private func card() -> ShieldConfiguration {
         let window = GateShared.currentWindow()
-        let instrument = window?.instrument ?? "your instrument"
-        let events = (window?.events.isEmpty == false) ? window!.events : "a high-impact release"
-        let closes = window.map { Date(timeIntervalSince1970: TimeInterval($0.closesAtMs) / 1000) }
+        let instrument = window?.instrument ?? "Your instrument"
+        let events = (window?.events.isEmpty == false) ? window!.events : "High impact news"
         let fmt = DateFormatter()
-        fmt.timeStyle = .short
-        let until = closes.map { fmt.string(from: $0) } ?? "the window ends"
+        fmt.dateFormat = "HH:mm"
+        let reopens = window
+            .map { Date(timeIntervalSince1970: TimeInterval($0.closesAtMs) / 1000) }
+            .map { "Trading reopens at \(fmt.string(from: $0))." } ?? "Trading reopens when the news window ends."
         let hard = GateShared.protection == "hard-block"
 
-        let ink = UIColor(red: 0.09, green: 0.09, blue: 0.10, alpha: 1)
-        let metal = UIColor(red: 0.62, green: 0.55, blue: 0.40, alpha: 1)
+        // app/lib/theme/tokens.dart: brandDeep, sky, amber.
+        let navy = UIColor(red: 0x08 / 255, green: 0x30 / 255, blue: 0x6B / 255, alpha: 1)
+        let sky = UIColor(red: 0x5B / 255, green: 0xC8 / 255, blue: 0xF5 / 255, alpha: 1)
+        let amber = UIColor(red: 0xF5 / 255, green: 0xA5 / 255, blue: 0x24 / 255, alpha: 1)
+        let icon = UIImage(systemName: "exclamationmark.shield.fill")?
+            .withTintColor(amber, renderingMode: .alwaysOriginal)
 
         return ShieldConfiguration(
             backgroundBlurStyle: .systemUltraThinMaterialDark,
-            backgroundColor: ink,
-            icon: UIImage(systemName: "shield.lefthalf.filled"),
-            title: ShieldConfiguration.Label(text: "Restricted: \(instrument)", color: .white),
+            backgroundColor: navy,
+            icon: icon,
+            title: ShieldConfiguration.Label(text: events, color: .white),
             subtitle: ShieldConfiguration.Label(
-                text: "\(events). Stay out until \(until). We never touch your trades.",
-                color: UIColor(white: 0.85, alpha: 1)),
-            primaryButtonLabel: ShieldConfiguration.Label(text: "Stay out", color: .white),
-            primaryButtonBackgroundColor: metal,
-            secondaryButtonLabel: hard ? nil : ShieldConfiguration.Label(text: "View for 60 seconds", color: UIColor(white: 0.85, alpha: 1)))
+                text: "\(instrument) is in a news window. \(reopens) We never touch your trades.",
+                color: sky),
+            primaryButtonLabel: ShieldConfiguration.Label(text: "Stay out", color: navy),
+            primaryButtonBackgroundColor: amber,
+            secondaryButtonLabel: hard ? nil : ShieldConfiguration.Label(text: "View for 60 seconds", color: sky))
     }
 }

@@ -40,7 +40,7 @@ class GateAlarmReceiver : BroadcastReceiver() {
         )
         nm.notify(NOTIFICATION_ID, NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-            .setContentTitle("Restricted: ${w.instrument}")
+            .setContentTitle("News window: ${w.instrument}")
             .setContentText("Open the app to arm the gate. Allow exact alarms in Settings so this is automatic.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

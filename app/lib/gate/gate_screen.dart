@@ -83,10 +83,11 @@ class _GateScreenState extends State<GateScreen> {
     final s = remaining.isNegative ? 0 : remaining.inSeconds;
     final mm = (s ~/ 60).toString().padLeft(2, '0');
     final ss = (s % 60).toString().padLeft(2, '0');
-    final close = '${widget.closesAtUtc.hour.toString().padLeft(2, '0')}:${widget.closesAtUtc.minute.toString().padLeft(2, '0')}';
+    final local = widget.closesAtUtc.toLocal();
+    final close = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 
     return Scaffold(
-      backgroundColor: Tokens.inkBg,
+      backgroundColor: Tokens.brandDeep,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -94,21 +95,26 @@ class _GateScreenState extends State<GateScreen> {
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('RESTRICTED WINDOW', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.brand, fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w700)),
+                const Text('NEWS WINDOW', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.amber, fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 Text('$mm:$ss', key: const Key('gate-countdown'), style: const TextStyle(fontFamily: Tokens.displayFamily, color: Tokens.inkText, fontSize: 96, height: 1, fontWeight: FontWeight.w600, letterSpacing: -2)),
                 const SizedBox(height: 16),
                 Text(widget.instrument, style: const TextStyle(fontFamily: Tokens.displayFamily, color: Tokens.inkText, fontSize: 36, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                Text(widget.events.isEmpty ? 'High-impact release' : widget.events, style: const TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.inkText, fontSize: 20)),
+                Text(widget.events.isEmpty ? 'High impact news' : widget.events, style: const TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.inkText, fontSize: 20)),
                 const SizedBox(height: 4),
-                Text('Until $close UTC', style: const TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.inkTextMuted, fontSize: 15)),
+                Text('Trading reopens at $close', style: const TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.sky, fontSize: 15)),
                 const SizedBox(height: 40),
-                const Text('We never touch your trades. Viewing is fine. Trading may breach.', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.inkTextMuted, fontSize: 15)),
+                const Text('We never touch your trades. Looking is fine, trading now may break your firm\'s rules.', style: TextStyle(fontFamily: Tokens.bodyFamily, color: Tokens.inkTextMuted, fontSize: 15)),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(key: const Key('gate-stay-out'), onPressed: widget.onStayOut, child: const Text('Stay out')),
+                  child: FilledButton(
+                    key: const Key('gate-stay-out'),
+                    style: FilledButton.styleFrom(backgroundColor: Tokens.amber, foregroundColor: Tokens.brandDeep),
+                    onPressed: widget.onStayOut,
+                    child: const Text('Stay out'),
+                  ),
                 ),
                 if (!widget.hardBlock) ...[
                   const SizedBox(height: 10),

@@ -47,18 +47,18 @@ class GateActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(INK_BG)
+            setBackgroundColor(NAVY)
             setPadding((24 * dp).toInt(), (48 * dp).toInt(), (24 * dp).toInt(), (32 * dp).toInt())
         }
 
-        val label = text("RESTRICTED WINDOW", 12f, METAL, Typeface.BOLD).apply { letterSpacing = 0.12f }
+        val label = text("NEWS WINDOW", 12f, AMBER, Typeface.BOLD).apply { letterSpacing = 0.12f }
         val countdown = text("--:--", 64f, INK_TEXT, Typeface.BOLD)
         val instrument = text(w.instrument, 28f, INK_TEXT, Typeface.BOLD)
-        val events = text(w.events.ifBlank { "High-impact release" }, 17f, INK_TEXT, Typeface.NORMAL)
-        val until = text("Until " + hhmm(w.closesAtMs) + " UTC", 14f, INK_MUTED, Typeface.NORMAL)
-        val promise = text("We never touch your trades. Viewing is fine. Trading may breach.", 14f, INK_MUTED, Typeface.NORMAL)
+        val events = text(w.events.ifBlank { "High impact news" }, 17f, INK_TEXT, Typeface.NORMAL)
+        val until = text("Trading reopens at " + hhmm(w.closesAtMs), 14f, SKY, Typeface.NORMAL)
+        val promise = text("We never touch your trades. Looking is fine, trading now may break your firm's rules.", 14f, INK_MUTED, Typeface.NORMAL)
 
-        val stayOut = button("Stay out", METAL, INK_BG).apply {
+        val stayOut = button("Stay out", AMBER, NAVY).apply {
             setOnClickListener { stayOut(w) }
         }
         val holdView = button("Hold to view only", Color.TRANSPARENT, INK_TEXT).apply {
@@ -158,14 +158,16 @@ class GateActivity : Activity() {
 
     companion object {
         fun hhmm(ms: Long): String {
-            val c = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = ms }
+            val c = java.util.Calendar.getInstance(java.util.TimeZone.getDefault()).apply { timeInMillis = ms }
             return String.format("%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
         }
 
-        private const val INK_BG = 0xFF0F1216.toInt()
-        private const val INK_TEXT = 0xFFEDEFF2.toInt()
-        private const val INK_MUTED = 0xFF9AA3AE.toInt()
-        private const val METAL = 0xFFAE9558.toInt()
+        // app/lib/theme/tokens.dart: brandDeep, sky, amber.
+        private const val NAVY = 0xFF08306B.toInt()
+        private const val INK_TEXT = 0xFFEDF3FA.toInt()
+        private const val INK_MUTED = 0xFFA9BCD3.toInt()
+        private const val SKY = 0xFF5BC8F5.toInt()
+        private const val AMBER = 0xFFF5A524.toInt()
 
         /**
          * From a service this is a background activity launch. Android 10+ allows
@@ -191,8 +193,8 @@ class GateActivity : Activity() {
             )
             nm.notify(4102, androidx.core.app.NotificationCompat.Builder(context, "ladder_urgent")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .setContentTitle("Restricted: ${w.instrument}")
-                .setContentText(w.events.ifBlank { "High-impact release" } + ". Stay out until " + hhmm(w.closesAtMs) + " UTC.")
+                .setContentTitle("News window: ${w.instrument}")
+                .setContentText(w.events.ifBlank { "High impact news" } + ". Trading reopens at " + hhmm(w.closesAtMs) + ".")
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(pi, true)

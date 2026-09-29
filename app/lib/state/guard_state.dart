@@ -95,6 +95,25 @@ class GuardState extends ChangeNotifier {
 
   String titleFor(String eventId) => _payload?.titleFor(eventId) ?? SampleData.titleFor(eventId);
 
+  /// When the event is due, in the phone's local time. Null if unknown.
+  DateTime? eventTimeFor(String eventId) {
+    for (final e in _payload?.events ?? SampleData.events) {
+      if (e['id'] != eventId) continue;
+      final at = e['scheduledAtUtc'];
+      return at is String ? DateTime.tryParse(at)?.toLocal() : null;
+    }
+    return null;
+  }
+
+  /// "US CPI 13:30": what the gate and the cover show, local time, 24 hour.
+  String eventLabel(String eventId) {
+    final t = eventTimeFor(eventId);
+    final title = titleFor(eventId);
+    if (t == null) return title;
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '$title ${two(t.hour)}:${two(t.minute)}';
+  }
+
   /// Windows in time order, computed by the device engine.
   List<Window> get windows {
     final base = _payload?.engineInput(_payload?.userId ?? _userId) ?? SampleData.engineInput();

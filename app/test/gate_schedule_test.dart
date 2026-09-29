@@ -39,7 +39,10 @@ void main() {
     expect(cpi.instrument, 'XAUUSD');
     expect(cpi.opensAtMs, DateTime.utc(2026, 10, 1, 8, 55).millisecondsSinceEpoch);
     expect(cpi.closesAtMs, DateTime.utc(2026, 10, 1, 9, 5).millisecondsSinceEpoch);
-    expect(cpi.events, 'CPI Flash Estimate y/y');
+    // Local time, so the cover reads the way the trader's clock does.
+    final local = DateTime.utc(2026, 10, 1, 9).toLocal();
+    final hhmm = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    expect(cpi.events, 'CPI Flash Estimate y/y $hhmm');
     expect(bridge.scheduledGatedAppIds, ['net.metaquotes.metatrader5']);
     expect(bridge.scheduledProtection, 'soft-gate');
   });

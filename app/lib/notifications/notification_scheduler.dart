@@ -147,7 +147,7 @@ class LocalNotificationScheduler implements NotificationScheduler {
       ));
       await androidPlugin.createNotificationChannel(const AndroidNotificationChannel(
         'digest',
-        'Night-before digest',
+        'Night before digest',
         description: "Tomorrow's windows.",
         importance: Importance.defaultImportance,
       ));

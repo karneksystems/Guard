@@ -142,7 +142,7 @@ class GateService : Service() {
         )
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-            .setContentTitle("Restricted window open: ${w.instrument}")
+            .setContentTitle("News window open: ${w.instrument}")
             .setContentText("Watching for your trading app until the window ends.")
             .setOngoing(true)
             .setContentIntent(open)
