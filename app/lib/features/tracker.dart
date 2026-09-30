@@ -29,6 +29,7 @@ class Tracker {
     this.startDate,
     this.inactivityDays = 30,
     this.weekendWarning = true,
+    this.tomorrowNews = true,
   });
 
   final String currency;
@@ -49,6 +50,9 @@ class Tracker {
   final int inactivityDays;
 
   final bool weekendWarning;
+
+  /// The night before alert, "Tomorrow's news". Local, like the rest here.
+  final bool tomorrowNews;
 
   static String dateKey(DateTime local) =>
       '${local.year.toString().padLeft(4, '0')}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
@@ -93,6 +97,7 @@ class Tracker {
     bool clearStartDate = false,
     int? inactivityDays,
     bool? weekendWarning,
+    bool? tomorrowNews,
   }) =>
       Tracker(
         currency: currency ?? this.currency,
@@ -102,6 +107,7 @@ class Tracker {
         startDate: clearStartDate ? null : (startDate ?? this.startDate),
         inactivityDays: inactivityDays ?? this.inactivityDays,
         weekendWarning: weekendWarning ?? this.weekendWarning,
+        tomorrowNews: tomorrowNews ?? this.tomorrowNews,
       );
 
   Tracker add(PnlEntry e) => copyWith(entries: [...entries, e]);
@@ -121,6 +127,7 @@ class Tracker {
         'startDate': startDate,
         'inactivityDays': inactivityDays,
         'weekendWarning': weekendWarning,
+        'tomorrowNews': tomorrowNews,
       };
 
   factory Tracker.fromJson(Map<String, dynamic> j) => Tracker(
@@ -131,5 +138,6 @@ class Tracker {
         startDate: j['startDate'] as String?,
         inactivityDays: j['inactivityDays'] as int? ?? 30,
         weekendWarning: j['weekendWarning'] as bool? ?? true,
+        tomorrowNews: j['tomorrowNews'] as bool? ?? true,
       );
 }

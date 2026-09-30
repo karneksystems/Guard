@@ -1,6 +1,7 @@
 import 'package:rule_engine/rule_engine.dart';
 
 import '../features/tracker.dart';
+import '../ui/words.dart';
 import 'notification_scheduler.dart';
 
 /// Ids at or above this are reminders, not ladder rungs. The ladder mirror
@@ -60,21 +61,27 @@ class ReminderPlanner {
     }
     final days = byDay.keys.toList()..sort();
     var n = 0;
-    for (final day in days) {
+    for (final day in tracker.tomorrowNews ? days : const <String>[]) {
       final eve = DateTime.parse(day).subtract(const Duration(days: 1));
       final fireLocal = DateTime.utc(eve.year, eve.month, eve.day, dh, dm);
       final fireUtc = toUtc(fireLocal);
       if (!fireUtc.isAfter(nowUtc)) continue;
-      final ws = byDay[day]!;
-      final events = <String>{for (final w in ws) ...w.reasons.map(titleFor)};
-      final instruments = <String>{for (final w in ws) w.instrument};
-      final first = ws.map((w) => w.opensAtUtc).reduce((a, b) => a.compareTo(b) <= 0 ? a : b);
-      final firstLocal = local(DateTime.parse(first));
+      final ws = byDay[day]!..sort((a, b) => a.opensAtUtc.compareTo(b.opensAtUtc));
+      // One cover per time and event, however many markets it touches.
+      final covers = <String, List<Window>>{};
+      for (final w in ws) {
+        covers.putIfAbsent('${w.opensAtUtc}|${w.reasons.join(',')}', () => []).add(w);
+      }
+      final first = covers.values.first;
+      final markets = first.map((w) => marketName(w.instrument)).toSet().join(', ');
+      final names = <String>{for (final w in first) ...w.reasons.map(titleFor)}.join(', ');
+      final more = covers.length - 1;
+      final firstLocal = local(DateTime.parse(first.first.opensAtUtc));
       out.add(ScheduledNotification(
         id: _digestBase + n++,
         alertId: 'digest:$day',
-        title: 'Tomorrow: ${ws.length} restricted ${ws.length == 1 ? 'window' : 'windows'}',
-        body: '${events.take(3).join(', ')} on ${instruments.join(', ')}. First at ${_hhmm(firstLocal)}.',
+        title: 'Tomorrow: ${covers.length} high impact ${covers.length == 1 ? 'window' : 'windows'}',
+        body: "Tomorrow's news is ready. $markets · $names at ${_hhmm(firstLocal)}${more > 0 ? ', then $more more' : ''}. Cover is on.",
         atUtc: fireUtc,
         channel: 'digest',
       ));
@@ -92,7 +99,7 @@ class ReminderPlanner {
         id: _weekendId,
         alertId: 'weekend:${Tracker.dateKey(friday)}',
         title: 'Weekend hold',
-        body: 'Markets close soon. Flat over the weekend unless your firm allows holding.',
+        body: 'Markets close soon. Be flat over the weekend unless your firm allows holding.',
         atUtc: friday,
         channel: 'digest',
       ));
@@ -148,5 +155,5 @@ class ReminderPlanner {
     return (scheduled: wanted.length, cancelled: cancelled);
   }
 
-  static String _hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  static String _hhmm(DateTime t) => '${t.hour}:${t.minute.toString().padLeft(2, '0')}';
 }

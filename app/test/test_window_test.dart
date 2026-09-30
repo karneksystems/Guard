@@ -25,6 +25,6 @@ void main() {
     final t1 = scheduler.pending.values.singleWhere((n) => n.alertId == 'test:t-1');
     expect(t1.atUtc, DateTime.utc(2026, 9, 24, 18, 1));
     expect(t1.channel, 'ladder_urgent');
-    expect(scheduler.pending.values.singleWhere((n) => n.alertId == 'test:open').title, 'Restricted: TEST');
+    expect(scheduler.pending.values.singleWhere((n) => n.alertId == 'test:open').title, 'Cover is on · TEST');
   });
 }

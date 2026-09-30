@@ -19,6 +19,7 @@ log. These files move to the product's own private repo once the name clears (D3
 | APPLE-ENTITLEMENT-REQUEST.md | Text for the Family Controls request, file it now |
 | NEXT-STEPS.md | What only the account holder can do next, in unblocking order |
 | REDESIGN-BRIEF-Grok.md | The 29 Sep redesign brief for Grok: locks, what's wrong, what to design, platform limits, source links, screenshots in redesign/shots |
+| redesign/BUILT.md | Grok's redesign as built on 30 Sep: what matches, what differs and why, screenshots in redesign/built |
 | LOCAL-REQUESTS.md | What the local session registers in the Apple Developer account with Jamie's OK, and what each unblocks |
 | TESTFLIGHT.md | The one-off setup that lets GitHub build and upload iPhone builds, no Mac needed |
 | TESTING-ON-DEVICE.md | Sideloading the CI builds on a phone or PC and trying the gate with the debug test window |

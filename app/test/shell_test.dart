@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guard_app/state/covers.dart';
 import 'package:guard_app/main.dart';
 import 'package:guard_app/state/guard_state.dart';
 
@@ -16,7 +17,7 @@ void main() {
     await pumpAt(tester, const Size(390, 844));
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
-    expect(find.text('NEXT WINDOW'), findsOneWidget);
+    expect(find.byKey(const Key('home-hero')), findsOneWidget);
   });
 
   testWidgets('tablet width uses a compact rail', (tester) async {
@@ -34,17 +35,21 @@ void main() {
   testWidgets('the hub profile slot is hidden from navigation', (tester) async {
     await pumpAt(tester, const Size(390, 844));
     expect(find.text('Profile'), findsNothing);
-    expect(find.text('Journal'), findsOneWidget);
+    expect(find.text('Log'), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
   });
 
   testWidgets('the engine drives the home screen over sample data', (tester) async {
     await pumpAt(tester, const Size(390, 844));
-    // EUR CPI at 09:00 opens 08:55 windows on both EURUSD and gold. Ties sort by
-    // symbol, so the card shows EURUSD and gold's window is in the list below.
-    expect(find.text('EURUSD'), findsOneWidget);
-    expect(find.textContaining('XAUUSD'), findsWidgets);
-    expect(find.textContaining('CPI Flash Estimate'), findsWidgets);
-    // Chicago PMI is medium impact and must not open a window.
+    expect(find.byKey(const Key('home-hero')), findsOneWidget);
+    // EUR CPI at 09:00 opens windows on gold and EURUSD: one cover, in the
+    // trader's order, named the way a trader says it.
+    final state = GuardScope.of(tester.element(find.byKey(const Key('home-hero'))));
+    final cpi = coversFor(state).firstWhere((c) => c.title == 'EUR CPI');
+    expect(cpi.symbols, ['XAUUSD', 'EURUSD']);
+    expect(cpi.markets, 'Gold, EUR');
+    // Chicago PMI is medium impact and must not open a cover.
+    expect(coversFor(state).where((c) => c.title.contains('PMI')), isEmpty);
     expect(find.textContaining('Chicago PMI'), findsNothing);
   });
 }

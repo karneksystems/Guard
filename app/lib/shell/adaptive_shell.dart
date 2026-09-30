@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'dart:async';
 
@@ -11,26 +12,43 @@ import '../screens/settings_screen.dart';
 import '../screens/windows_screen.dart';
 import '../state/guard_controller.dart';
 import '../theme/tokens.dart';
+import '../ui/parts.dart';
 
 /// The hub is designed in and built later. Its nav slot exists from day one so it
 /// never looks bolted on, but it stays dark until the guard has users.
 const bool kHubEnabled = false;
 
 enum GuardTab {
-  home('Home', Icons.shield_outlined, Icons.shield),
-  windows('Windows', Icons.schedule_outlined, Icons.schedule),
-  journal('Journal', Icons.notes_outlined, Icons.notes),
-  settings('Settings', Icons.tune_outlined, Icons.tune),
-  profile('Profile', Icons.person_outline, Icons.person);
+  // Engineering names stay; the trader sees the labels (docs/redesign/grok-final).
+  home('Home', 'nav-home'),
+  windows('Today', 'nav-today'),
+  journal('Log', 'nav-log'),
+  settings('Settings', 'nav-settings'),
+  profile('Profile', 'nav-home');
 
-  const GuardTab(this.label, this.icon, this.selectedIcon);
+  const GuardTab(this.label, this.icon);
 
   final String label;
-  final IconData icon;
-  final IconData selectedIcon;
+
+  /// The SVG in assets/icons, drawn in the current colour.
+  final String icon;
 
   static List<GuardTab> get visible =>
       values.where((t) => t != GuardTab.profile || kHubEnabled).toList();
+}
+
+class _NavIcon extends StatelessWidget {
+  const _NavIcon(this.tab, {required this.selected});
+
+  final GuardTab tab;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? Shade.of(context).accent : Shade.of(context).muted;
+    return SvgPicture.asset('assets/icons/${tab.icon}.svg',
+        width: 24, height: 24, colorFilter: ColorFilter.mode(color, BlendMode.srcIn));
+  }
 }
 
 /// One shell, three compositions: bottom bar under 600 dp, a compact rail to
@@ -63,7 +81,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
     super.dispose();
   }
 
-  /// A notification tap: rungs land on Windows, the digest on tomorrow's screen.
+  /// A notification tap: rungs land on Today, the night before alert on Tomorrow's news.
   void _open(NotificationTap tap) {
     if (!mounted) return;
     ControllerScope.of(context).consumeTap();
@@ -101,7 +119,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
             onDestinationSelected: (i) => setState(() => _tab = tabs[i]),
             destinations: [
               for (final t in tabs)
-                NavigationDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: t.label),
+                NavigationDestination(icon: _NavIcon(t, selected: false), selectedIcon: _NavIcon(t, selected: true), label: t.label),
             ],
           ),
         );
@@ -118,7 +136,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
             labelType: extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
             destinations: [
               for (final t in tabs)
-                NavigationRailDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: Text(t.label)),
+                NavigationRailDestination(icon: _NavIcon(t, selected: false), selectedIcon: _NavIcon(t, selected: true), label: Text(t.label)),
             ],
           ),
           const VerticalDivider(width: 1),

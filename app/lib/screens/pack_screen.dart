@@ -31,11 +31,11 @@ class PackScreen extends StatelessWidget {
         padding: const EdgeInsets.all(Tokens.gutter),
         children: [
           Row(children: [
-            Text('Pack ${pack?['packVersion'] ?? entry?.packVersion ?? ''}', style: text.titleMedium),
+            Text("Your firm's rules · version ${pack?['packVersion'] ?? entry?.packVersion ?? ''}", style: text.titleMedium),
             const SizedBox(width: 8),
             Chip(
               key: const Key('pack-badge'),
-              label: Text(unverified ? 'Unverified' : 'Verified ${pack?['lastVerified'] ?? entry?.lastVerified ?? ''}'),
+              label: Text(unverified ? 'Not checked yet' : 'Checked ${pack?['lastVerified'] ?? entry?.lastVerified ?? ''}'),
               backgroundColor: unverified ? Tokens.statusWarn.withValues(alpha: 0.15) : null,
             ),
           ]),
@@ -48,7 +48,7 @@ class PackScreen extends StatelessWidget {
           ),
           const SizedBox(height: Tokens.gutter),
           if (pack == null)
-            const Text('Pack not downloaded yet. It arrives on the next sync.')
+            const Text("Your firm's rules haven't downloaded yet. They arrive with the next sync.")
           else ...[
             Text('Source', style: text.titleMedium),
             SelectableText(pack['sourceUrl'] as String, style: text.bodySmall),
@@ -80,9 +80,9 @@ class PackScreen extends StatelessWidget {
               _ => 'Unknown, so treated as not allowed.',
             }),
             const SizedBox(height: Tokens.gutter),
-            Text('Changelog', style: text.titleMedium),
+            Text('What changed', style: text.titleMedium),
             if (!state.flags.changelog)
-              Text('Rule changes and the changelog are part of Pro.', style: text.bodySmall)
+              Text('Rule changes and their history are part of Pro.', style: text.bodySmall)
             else
               for (final e in (pack['changelog'] as List).cast<Map<String, dynamic>>().reversed)
                 ListTile(

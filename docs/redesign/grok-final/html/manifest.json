@@ -1,0 +1,366 @@
+[
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-gate-amber.html",
+    "png": "/workspace/elite-redesign/final/phone/gate-amber.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/gate-amber"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-gate-red.html",
+    "png": "/workspace/elite-redesign/final/phone/gate-red.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/gate-red"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-gate-hard-block.html",
+    "png": "/workspace/elite-redesign/final/phone/gate-hard-block.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/gate-hard-block"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-home-busy-dark.html",
+    "png": "/workspace/elite-redesign/final/phone/home-busy-dark.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/home-busy-dark"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-home-busy-light.html",
+    "png": "/workspace/elite-redesign/final/phone/home-busy-light.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/home-busy-light"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-home-clear-dark.html",
+    "png": "/workspace/elite-redesign/final/phone/home-clear-dark.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/home-clear-dark"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-home-clear-light.html",
+    "png": "/workspace/elite-redesign/final/phone/home-clear-light.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/home-clear-light"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-edge-glow-detail.html",
+    "png": "/workspace/elite-redesign/final/phone/edge-glow-detail.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/edge-glow-detail"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-lock-sky-hour.html",
+    "png": "/workspace/elite-redesign/final/phone/lock-sky-hour.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/lock-sky-hour"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-lock-amber-5min.html",
+    "png": "/workspace/elite-redesign/final/phone/lock-amber-5min.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/lock-amber-5min"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-lock-red-open.html",
+    "png": "/workspace/elite-redesign/final/phone/lock-red-open.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/lock-red-open"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-lock-sky-clear.html",
+    "png": "/workspace/elite-redesign/final/phone/lock-sky-clear.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/lock-sky-clear"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-di-compact.html",
+    "png": "/workspace/elite-redesign/final/phone/di-compact.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/di-compact"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-di-expanded.html",
+    "png": "/workspace/elite-redesign/final/phone/di-expanded.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/di-expanded"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-shield-mock.html",
+    "png": "/workspace/elite-redesign/final/phone/shield-mock.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/shield-mock"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-shield-config-doc.html",
+    "png": "/workspace/elite-redesign/final/phone/shield-config-doc.png",
+    "w": 900,
+    "h": 600,
+    "key": "phone/shield-config-doc"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-60.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-60.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-60"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-15.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-15.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-15"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-5.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-5.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-5"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-1.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-1.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-1"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-open.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-open.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-open"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-clear.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-clear.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-clear"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-notif-tomorrow.html",
+    "png": "/workspace/elite-redesign/final/phone/notif-tomorrow.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/notif-tomorrow"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-android-fsi.html",
+    "png": "/workspace/elite-redesign/final/phone/android-fsi.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/android-fsi"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-setup-1.html",
+    "png": "/workspace/elite-redesign/final/phone/setup-1.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/setup-1"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-setup-2.html",
+    "png": "/workspace/elite-redesign/final/phone/setup-2.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/setup-2"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-setup-3.html",
+    "png": "/workspace/elite-redesign/final/phone/setup-3.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/setup-3"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-today.html",
+    "png": "/workspace/elite-redesign/final/phone/today.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/today"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-today-light.html",
+    "png": "/workspace/elite-redesign/final/phone/today-light.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/today-light"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-tomorrows-news.html",
+    "png": "/workspace/elite-redesign/final/phone/tomorrows-news.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/tomorrows-news"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-tomorrows-news-light.html",
+    "png": "/workspace/elite-redesign/final/phone/tomorrows-news-light.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/tomorrows-news-light"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-log.html",
+    "png": "/workspace/elite-redesign/final/phone/log.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/log"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-tracker.html",
+    "png": "/workspace/elite-redesign/final/phone/tracker.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/tracker"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-settings.html",
+    "png": "/workspace/elite-redesign/final/phone/settings.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/settings"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-paywall.html",
+    "png": "/workspace/elite-redesign/final/phone/paywall.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/paywall"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/phone-permissions.html",
+    "png": "/workspace/elite-redesign/final/phone/permissions.png",
+    "w": 428,
+    "h": 926,
+    "key": "phone/permissions"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/tablet-home.html",
+    "png": "/workspace/elite-redesign/final/tablet/home.png",
+    "w": 834,
+    "h": 1194,
+    "key": "tablet/home"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/tablet-gate-amber.html",
+    "png": "/workspace/elite-redesign/final/tablet/gate-amber.png",
+    "w": 834,
+    "h": 1194,
+    "key": "tablet/gate-amber"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/tablet-gate-red.html",
+    "png": "/workspace/elite-redesign/final/tablet/gate-red.png",
+    "w": 834,
+    "h": 1194,
+    "key": "tablet/gate-red"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/desktop-home.html",
+    "png": "/workspace/elite-redesign/final/desktop/home.png",
+    "w": 1440,
+    "h": 900,
+    "key": "desktop/home"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/desktop-gate-amber.html",
+    "png": "/workspace/elite-redesign/final/desktop/gate-amber.png",
+    "w": 1440,
+    "h": 900,
+    "key": "desktop/gate-amber"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/desktop-gate-red.html",
+    "png": "/workspace/elite-redesign/final/desktop/gate-red.png",
+    "w": 1440,
+    "h": 900,
+    "key": "desktop/gate-red"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/home-quiet.html",
+    "png": "/workspace/elite-redesign/final/composites/home-quiet.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/home-quiet"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/home-island-soon.html",
+    "png": "/workspace/elite-redesign/final/composites/home-island-soon.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/home-island-soon"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/home-island-on.html",
+    "png": "/workspace/elite-redesign/final/composites/home-island-on.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/home-island-on"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/lock-hour.html",
+    "png": "/workspace/elite-redesign/final/composites/lock-hour.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/lock-hour"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/lock-soon.html",
+    "png": "/workspace/elite-redesign/final/composites/lock-soon.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/lock-soon"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/lock-on.html",
+    "png": "/workspace/elite-redesign/final/composites/lock-on.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/lock-on"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/lock-clear.html",
+    "png": "/workspace/elite-redesign/final/composites/lock-clear.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/lock-clear"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/lock-banner-60.html",
+    "png": "/workspace/elite-redesign/final/composites/lock-banner-60.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/lock-banner-60"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/unlocked-banner-open.html",
+    "png": "/workspace/elite-redesign/final/composites/unlocked-banner-open.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/unlocked-banner-open"
+  },
+  {
+    "html": "/workspace/elite-redesign/final/html/composites/overlay-mt5.html",
+    "png": "/workspace/elite-redesign/final/composites/overlay-mt5.png",
+    "w": 428,
+    "h": 926,
+    "key": "composites/overlay-mt5"
+  }
+]

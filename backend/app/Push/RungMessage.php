@@ -4,6 +4,7 @@ namespace App\Push;
 
 use App\Models\CalendarEvent;
 use App\Models\Rung;
+use App\Models\User;
 use App\Models\Window;
 
 /**
@@ -30,21 +31,26 @@ final class RungMessage
     {
         $window = Window::query()->find($rung->window_id);
         $instrument = $window?->instrument ?? 'your instrument';
-        $opens = $window?->opens_at_utc->format('H:i') ?? '';
-        $closes = $window?->closes_at_utc->format('H:i') ?? '';
-        $reasons = $window
-            ? CalendarEvent::query()->whereIn('id', $window->reasons)->orderBy('scheduled_at_utc')->pluck('title')->all()
+        // Local times, in the user's own zone (docs/redesign/grok-final/COPY.md).
+        $tz = new \DateTimeZone(User::query()->find($rung->user_id)?->tz ?: 'UTC');
+        $opens = $window?->opens_at_utc->setTimezone($tz)->format('G:i') ?? '';
+        $closes = $window?->closes_at_utc->setTimezone($tz)->format('G:i') ?? '';
+        $events = $window
+            ? CalendarEvent::query()->whereIn('id', $window->reasons)->orderBy('scheduled_at_utc')->get()
+                ->map(fn (CalendarEvent $e) => EventNames::short($e->currency, $e->title))->unique()->values()->all()
             : [];
-        $events = $reasons === [] ? 'High impact news' : implode(', ', array_slice($reasons, 0, 2));
+        $events = $events === [] ? 'High impact news' : implode(', ', array_slice($events, 0, 2));
+        $market = EventNames::market($instrument);
+        $spoken = in_array($market, ['Gold', 'Silver', 'Oil'], true) ? strtolower($market) : $market;
 
         [$title, $body] = match ($rung->kind) {
-            't-60' => ["$instrument window in 60 min", "$events. Restricted $opens to $closes UTC."],
-            't-15' => ["$instrument window in 15 min", "$events. Flat by $opens UTC."],
-            't-5' => ["$instrument window in 5 min", "$events. Close or hold. Gate at $opens UTC."],
-            't-1' => ["One minute: $instrument", "$events. Hands off until $closes UTC."],
-            'open' => ["Restricted: $instrument", "$events. Stay out until $closes UTC."],
-            'end' => ["Clear: $instrument", "Window closed. Trade at your own pace."],
-            default => ["$instrument", $events],
+            't-60' => ["$market cover in 60 min", "$events. Stay flat from $opens to $closes."],
+            't-15' => ["$market cover in 15 min", "$events. Be flat by $opens."],
+            't-5' => ["$market cover in 5 min", "$events. Close or hold. Cover starts at $opens."],
+            't-1' => ["One minute · $spoken", "$events. Hands off until $closes."],
+            'open' => ["Cover is on · $spoken", "$events. Stay out until $closes."],
+            'end' => ["You're clear · $spoken", 'Cover ended. Trade at your own pace.'],
+            default => [$market, $events],
         };
 
         return new self(

@@ -135,20 +135,20 @@ class LocalNotificationScheduler implements NotificationScheduler {
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(const AndroidNotificationChannel(
         'ladder_urgent',
-        'Window opening',
-        description: 'One minute and open alerts. Repeats until dismissed.',
+        'Cover starting',
+        description: 'The one minute and cover alerts. Repeat until dismissed.',
         importance: Importance.max,
       ));
       await androidPlugin.createNotificationChannel(const AndroidNotificationChannel(
         'ladder',
-        'Window ladder',
-        description: '60, 15 and 5 minute warnings, and the all clear.',
+        'Warnings',
+        description: "60, 15 and 5 minute warnings, and the all clear.",
         importance: Importance.high,
       ));
       await androidPlugin.createNotificationChannel(const AndroidNotificationChannel(
         'digest',
-        'Night before digest',
-        description: "Tomorrow's windows.",
+        "Tomorrow's news",
+        description: "Tomorrow's high impact windows, the night before.",
         importance: Importance.defaultImportance,
       ));
     }
@@ -163,7 +163,7 @@ class LocalNotificationScheduler implements NotificationScheduler {
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         n.channel,
-        urgent ? 'Window opening' : 'Window ladder',
+        urgent ? 'Cover starting' : 'Warnings',
         importance: urgent ? Importance.max : Importance.high,
         priority: urgent ? Priority.max : Priority.high,
         category: urgent ? AndroidNotificationCategory.alarm : AndroidNotificationCategory.reminder,

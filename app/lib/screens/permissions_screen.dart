@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
+import '../ui/parts.dart';
 
 /// One plain screen per the brief: each permission, why it's needed, and a button
 /// that opens the OS page. Status refreshes when the user comes back.
@@ -13,31 +14,48 @@ class PermissionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = GuardScope.of(context);
     final c = ControllerScope.of(context);
-    final text = Theme.of(context).textTheme;
     final supported = c.bridge.supportedPermissions.toList()..sort((a, b) => a.index.compareTo(b.index));
 
+    final shade = Shade.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Permissions')),
+      appBar: AppBar(),
       body: ListView(
-        padding: const EdgeInsets.all(Tokens.gutter),
+        padding: const EdgeInsets.fromLTRB(Tokens.gutter, 0, Tokens.gutter, Tokens.gutter),
         children: [
-          Text('Each one has a job. Without it, part of the guard can\'t work, and Home will say so.', style: text.bodyMedium),
-          const SizedBox(height: Tokens.gutter),
-          for (final p in supported)
-            Card(
-              child: ListTile(
-                key: Key('perm-${p.name}'),
-                title: Text(p.label),
-                subtitle: Text(p.why),
-                trailing: state.permissions[p] == true
-                    ? const Icon(Icons.check, color: Tokens.brand)
-                    : OutlinedButton(
-                        key: Key('grant-${p.name}'),
-                        onPressed: () => c.requestPermission(p),
-                        child: const Text('Open settings'),
+          const PageHead('Permissions', sub: 'Each one has a job. Without it, part of Guard stops working, and Home will say so.'),
+          const SizedBox(height: 16),
+          Panel(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              for (var i = 0; i < supported.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: shade.hairline),
+                Padding(
+                  key: Key('perm-${supported[i].name}'),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(supported[i].label, style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 15, fontWeight: FontWeight.w600, color: shade.text)),
+                        const SizedBox(height: 2),
+                        Text(supported[i].why, style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 12, color: shade.muted)),
+                      ]),
+                    ),
+                    const SizedBox(width: 12),
+                    if (state.permissions[supported[i]] == true)
+                      Icon(Icons.check_circle, color: shade.accent, size: 22)
+                    else
+                      OutlinedButton(
+                        key: Key('grant-${supported[i].name}'),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                        onPressed: () => c.requestPermission(supported[i]),
+                        child: const Text('Turn on'),
                       ),
-              ),
-            ),
+                  ]),
+                ),
+              ],
+            ]),
+          ),
+          const Promise(text: 'We never read your trades or log into any account.'),
         ],
       ),
     );
@@ -53,16 +71,22 @@ class PermissionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final missing = GuardScope.of(context).missingPermissions;
     if (missing.isEmpty) return const SizedBox.shrink();
-    final text = Theme.of(context).textTheme;
-    return Card(
+    return Panel(
       key: const Key('permission-banner'),
-      color: Tokens.statusWarn.withValues(alpha: 0.12),
-      child: ListTile(
-        title: Text('${missing.length} permission${missing.length == 1 ? '' : 's'} missing', style: text.titleMedium),
-        subtitle: Text(missing.map((p) => p.label).join(' · '), style: text.bodySmall),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PermissionsScreen())),
-      ),
+      accent: Tokens.amber,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PermissionsScreen())),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(missing.length == 1 ? 'One thing to turn on' : '${missing.length} things to turn on',
+                style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 14, fontWeight: FontWeight.w700, color: Tokens.amber)),
+            const SizedBox(height: 2),
+            Text(missing.map((p) => p.label).join(' · '), style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 13, color: Shade.of(context).text)),
+          ]),
+        ),
+        Icon(Icons.chevron_right, size: 18, color: Shade.of(context).muted),
+      ]),
     );
   }
 }

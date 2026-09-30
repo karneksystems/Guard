@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../platform/platform_bridge.dart';
+import '../state/covers.dart';
 import '../state/guard_controller.dart';
+import '../ui/words.dart';
 import 'gate_screen.dart';
 
 /// Desktop Soft gate, Dart side. The native watcher says a gated app came to the
@@ -52,6 +54,11 @@ class DesktopGate {
     final closes = DateTime.parse(w.closesAtUtc).toUtc();
     if (!_now.isBefore(closes)) return;
 
+    Cover? cover;
+    for (final c in coversFor(state)) {
+      if (c.symbols.contains(w.instrument) && c.opens == DateTime.parse(w.opensAtUtc).toUtc()) cover = c;
+    }
+
     _showingWindowId = w.windowId;
     await controller.bridge.raiseGate(t.handle);
 
@@ -63,8 +70,9 @@ class DesktopGate {
     await nav.push(MaterialPageRoute<void>(
       fullscreenDialog: true,
       builder: (_) => GateScreen(
-        instrument: w.instrument,
-        events: w.reasons.map(state.eventLabel).join(', '),
+        what: '${cover?.markets ?? marketName(w.instrument)} · ${cover?.title ?? 'High impact news'}',
+        impact: cover?.impact ?? 'high',
+        opensAtUtc: DateTime.parse(w.opensAtUtc).toUtc(),
         closesAtUtc: closes,
         hardBlock: protection == 'hard-block',
         now: now,

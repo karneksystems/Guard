@@ -240,6 +240,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('paywall-yearly')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('paywall-start')));
+    await tester.pumpAndSettle();
 
     final ent = server.seen.singleWhere((r) => r.url.path == '/api/entitlement');
     expect(jsonDecode(ent.body), {'platform': 'fake', 'plan': 'yearly', 'receipt': 'fake:yearly'});

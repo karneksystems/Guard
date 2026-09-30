@@ -24,24 +24,25 @@ enum GuardPermission {
   fullScreenIntent,
   batteryUnrestricted;
 
+  /// docs/redesign/grok-final/COPY.md, Permissions.
   String get label => switch (this) {
         notifications => 'Notifications',
         screenTime => 'Screen Time',
         usageStats => 'Usage access',
-        overlay => 'Display over other apps',
-        exactAlarm => 'Alarms and reminders',
-        fullScreenIntent => 'Full screen alerts',
-        batteryUnrestricted => 'Unrestricted battery',
+        overlay => 'Display over apps',
+        exactAlarm => 'Alarms on time',
+        fullScreenIntent => 'Full screen alarms',
+        batteryUnrestricted => 'Battery unrestricted',
       };
 
   String get why => switch (this) {
-        notifications => 'The alert ladder is delivered as notifications.',
-        screenTime => 'Lets the guard shield the apps you pick during a window. Apple keeps which apps they are.',
-        usageStats => 'Lets the guard notice when MT5 comes to the front during a window.',
-        overlay => 'Lets the gate cover MT5 during a window.',
-        exactAlarm => 'Starts the guard exactly when a window opens, even if the app is closed.',
-        fullScreenIntent => 'Makes the T-1 and open alerts impossible to miss.',
-        batteryUnrestricted => 'Stops the phone maker\'s battery manager from delaying alerts.',
+        notifications => "Warnings and Tomorrow's news",
+        screenTime => 'Cover the apps you pick. Apple keeps which apps they are',
+        usageStats => 'See when MT5 is in front',
+        overlay => 'Show the cover',
+        exactAlarm => 'Cover on the minute',
+        fullScreenIntent => 'Alarm style when locked',
+        batteryUnrestricted => 'Keep watching in the background',
       };
 }
 

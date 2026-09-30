@@ -83,7 +83,7 @@ class _NewsGlowState extends State<NewsGlow> {
                 ? const SizedBox.expand()
                 : CustomPaint(
                     key: Key('news-glow-${news.phase.name}'),
-                    painter: _EdgePainter(color, _cornerRadius()),
+                    painter: _EdgePainter(news.phase == NewsPhase.live, _cornerRadius()),
                   ),
           ),
         ),
@@ -101,34 +101,37 @@ class _NewsGlowState extends State<NewsGlow> {
 }
 
 class _EdgePainter extends CustomPainter {
-  _EdgePainter(this.color, this.radius);
+  _EdgePainter(this.red, this.radius);
 
-  final Color color;
+  final bool red;
   final double radius;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
-    // A soft wash that fades inwards, then a crisp line on the edge itself.
-    for (final (width, blur, alpha) in const [(28.0, 18.0, 0.35), (10.0, 6.0, 0.6)]) {
-      canvas.drawRRect(
-        rect,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width
-          ..color = color.withValues(alpha: alpha)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur),
-      );
-    }
+    final wash = red ? Tokens.phaseGlowRed : Tokens.phaseGlowAmber;
+    final core = red ? Tokens.phaseGlowRedCore : Tokens.phaseGlowAmberCore;
+    // The pack's bloom: a soft inset wash, then the 3pt line on the edge.
+    canvas.save();
+    canvas.clipRRect(rect);
     canvas.drawRRect(
-      rect.deflate(1.5),
+      rect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..color = color,
+        ..strokeWidth = Tokens.glowBloom
+        ..color = wash
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, Tokens.glowBloom / 2),
+    );
+    canvas.restore();
+    canvas.drawRRect(
+      rect.deflate(Tokens.glowWidth / 2),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = Tokens.glowWidth
+        ..color = core,
     );
   }
 
   @override
-  bool shouldRepaint(_EdgePainter old) => old.color != color || old.radius != radius;
+  bool shouldRepaint(_EdgePainter old) => old.red != red || old.radius != radius;
 }

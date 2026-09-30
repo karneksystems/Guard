@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08306B"/>
+      <stop offset="100%" stop-color="#0B5CAD"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#7DD3F8"/>
+      <stop offset="100%" stop-color="#5BC8F5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <path d="M512 168 L752 248 V448 C752 620 632 748 512 820 C392 748 272 620 272 448 V248 Z" fill="url(#shield)"/>
+  <path d="M512 196 L720 268 V448 C720 600 616 714 512 778 C408 714 304 600 304 448 V268 Z" fill="#08306B" opacity="0.22"/>
+  <circle cx="512" cy="460" r="148" fill="#08306B" opacity="0.5"/>
+  <circle cx="512" cy="460" r="132" fill="none" stroke="#08306B" stroke-width="10"/>
+  <circle cx="512" cy="460" r="118" fill="#5BC8F5"/>
+  <g stroke="#08306B" stroke-width="8" stroke-linecap="round" opacity="0.75">
+    <line x1="512" y1="360" x2="512" y2="380"/>
+    <line x1="512" y1="540" x2="512" y2="560"/>
+    <line x1="412" y1="460" x2="432" y2="460"/>
+    <line x1="592" y1="460" x2="612" y2="460"/>
+  </g>
+  <line x1="512" y1="460" x2="512" y2="390" stroke="#08306B" stroke-width="14" stroke-linecap="round"/>
+  <line x1="512" y1="460" x2="575" y2="500" stroke="#08306B" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="512" cy="460" r="16" fill="#08306B"/>
+</svg>

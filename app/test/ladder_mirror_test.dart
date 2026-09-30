@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guard_app/ui/words.dart';
 import 'package:guard_app/notifications/ladder_mirror.dart';
 import 'package:guard_app/notifications/notification_scheduler.dart';
 import 'package:guard_app/sync/sync_payload.dart';
@@ -47,8 +48,9 @@ void main() {
     expect(r.scheduled, 6);
     expect(scheduler.pending.length, 6);
     final open = scheduler.pending.values.singleWhere((n) => n.alertId.startsWith('a5'));
-    expect(open.title, 'Restricted: XAUUSD');
-    expect(open.body, 'Non-Farm Payrolls. Stay out until 12:35 UTC.');
+    expect(open.title, 'Cover is on · gold');
+    // Short name and local time: the mirror says what a trader would.
+    expect(open.body, 'NFP. Stay out until ${clock(DateTime.utc(2026, 10, 2, 12, 35))}.');
     expect(open.channel, 'ladder_urgent');
     expect(open.atUtc, DateTime.utc(2026, 10, 2, 12, 25, 20));
     final t60 = scheduler.pending.values.singleWhere((n) => n.alertId.startsWith('a1'));
@@ -78,7 +80,7 @@ void main() {
     final r = await mirror.reconcile(payloadWith(opens: '2026-10-02T12:25:00Z', closes: '2026-10-02T12:35:00Z', ladder: ladderFor('2026-10-02T12:25:00Z', '2026-10-02T12:35:00Z')), now: late);
 
     expect(r.scheduled, 1);
-    expect(scheduler.pending.values.single.title, 'Clear: XAUUSD');
+    expect(scheduler.pending.values.single.title, "You're clear · gold");
   });
 
   test('a push arriving cancels only its own mirror', () async {

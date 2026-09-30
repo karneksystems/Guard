@@ -33,13 +33,25 @@ void main() {
     expect(plan.length, 2);
     final first = plan.singleWhere((n) => n.alertId == 'digest:2026-10-01');
     expect(first.atUtc, DateTime.utc(2026, 9, 30, 19, 0));
-    expect(first.title, 'Tomorrow: 2 restricted windows');
-    expect(first.body, 'CPI y/y, Non-Farm Payrolls on XAUUSD. First at 09:55.');
+    expect(first.title, 'Tomorrow: 2 high impact windows');
+    expect(first.body, "Tomorrow's news is ready. Gold · CPI y/y at 9:55, then 1 more. Cover is on.");
     expect(first.channel, 'digest');
     expect(first.id, greaterThanOrEqualTo(kReminderIdBase));
     final second = plan.singleWhere((n) => n.alertId == 'digest:2026-10-02');
     expect(second.atUtc, DateTime.utc(2026, 10, 1, 19, 0));
-    expect(second.title, 'Tomorrow: 1 restricted window');
+    expect(second.title, 'Tomorrow: 1 high impact window');
+  });
+
+  test("Tomorrow's news switched off schedules no night before alert", () {
+    final planner = ReminderPlanner(FakeScheduler(), utcOffset: offset);
+    final plan = planner.plan(
+      windows: [win('a', '2026-10-01T08:55:00Z', '2026-10-01T09:05:00Z', reasons: ['cpi'])],
+      titleFor: title,
+      digestLocalTime: '20:00',
+      tracker: const Tracker(weekendWarning: false, inactivityDays: 0, tomorrowNews: false),
+      now: now,
+    );
+    expect(plan, isEmpty);
   });
 
   test('a digest whose time has passed is not scheduled', () {

@@ -82,8 +82,8 @@ final class PushSendersTest extends TestCase
     public function test_rung_message_words_and_levels(): void
     {
         $open = RungMessage::for($this->rung('open'));
-        $this->assertSame('Restricted: XAUUSD', $open->title);
-        $this->assertSame('Non-Farm Payrolls. Stay out until 12:35 UTC.', $open->body);
+        $this->assertSame('Cover is on · gold', $open->title);
+        $this->assertSame('NFP. Stay out until 12:35.', $open->body);
         $this->assertSame('time-sensitive', $open->level);
         $this->assertSame('ladder_urgent', $open->channel);
 
@@ -113,7 +113,7 @@ final class PushSendersTest extends TestCase
                 && $r->hasHeader('apns-push-type', 'alert')
                 && str_starts_with($r->header('authorization')[0], 'bearer ')
                 && $body['aps']['interruption-level'] === 'time-sensitive'
-                && $body['aps']['alert']['title'] === 'Restricted: XAUUSD'
+                && $body['aps']['alert']['title'] === 'Cover is on · gold'
                 && $body['kind'] === 'open';
         });
     }

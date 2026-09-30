@@ -57,30 +57,38 @@ void main() {
     final h = Harness();
     await pump(tester, h.app());
 
-    // 1 instruments: gold is preselected; add EURUSD; a third is disabled on Free.
-    await tester.tap(find.byKey(const Key('inst-EURUSD')));
+    // 1 markets: gold and EUR are picked; Free watches two, so a third is off.
+    expect(tester.widget<Opacity>(find.ancestor(of: find.byKey(const Key('inst-GBPUSD')), matching: find.byType(Opacity)).first).opacity, lessThan(1));
+    await tester.tap(find.byKey(const Key('inst-GBPUSD')));
     await tester.pumpAndSettle();
-    final gbp = tester.widget<FilterChip>(find.byKey(const Key('inst-GBPUSD')));
-    expect(gbp.onSelected, isNull);
+    expect(find.text('Continue'), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
-    // 2 alerts: one button, then the apps to cover. MT5 is on by default.
+    // 2 alerts and apps: one switch for notifications, MT5 covered by default.
     expect(find.text('Skip for now'), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-allow-notifications')));
     await tester.pumpAndSettle();
     expect(h.bridge.requested, [GuardPermission.notifications]);
     expect(find.byKey(const Key('onboarding-notifications-on')), findsOneWidget);
-    expect(find.text('Next'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
+    expect(find.text('MetaTrader 5'), findsNothing);
+    expect(find.text('MT5'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-cover-row')));
+    await tester.pumpAndSettle();
     expect(tester.widget<CheckboxListTile>(find.byKey(const Key('gate-net.metaquotes.metatrader5'))).value, isTrue);
     await tester.tap(find.byKey(const Key('gate-com.spotware.ct')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('gate-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('MT5, cTrader'), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
     // 3 you're set
     expect(find.text("You're set"), findsOneWidget);
-    expect(find.text('Guard never touches your trades, your account or your broker.'), findsOneWidget);
+    expect(find.textContaining('Cover is on for gold, EUR.'), findsOneWidget);
+    expect(find.byKey(const Key('onboarding-next-steps')), findsOneWidget);
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
 
@@ -91,6 +99,7 @@ void main() {
     expect(h.state.gatedAppIds.toSet(), {'net.metaquotes.metatrader5', 'com.spotware.ct'});
     expect(h.state.settings['protection'], 'soft-gate');
     expect(h.state.settings['mode'], 'conservative');
+    expect(h.state.tracker.tomorrowNews, isTrue);
 
     // Wire: one settings PUT and one instruments PUT, snake_case on settings.
     final puts = h.requests.where((r) => r.method == 'PUT').toList();
@@ -114,18 +123,26 @@ void main() {
   testWidgets('with alerts refused, step two offers a skip and setup still finishes', (tester) async {
     final h = Harness(granted: {for (final p in GuardPermission.values) p: false});
     await pump(tester, h.app());
+    // Down to gold alone, then on.
+    await tester.tap(find.byKey(const Key('inst-EURUSD')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-allow-notifications')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('onboarding-notifications-on')), findsNothing);
     expect(find.text('Skip for now'), findsOneWidget);
+    // Alarms are off, so the plain warning shows. Tomorrow's news goes off.
+    expect(find.byKey(const Key('onboarding-alarms-warning')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-tomorrow')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('onboarding-next')));
     await tester.pumpAndSettle();
     expect(h.state.onboarded, isTrue);
     expect(h.state.instruments.map((i) => i['symbol']), ['XAUUSD']);
+    expect(h.state.tracker.tomorrowNews, isFalse);
   });
 
   testWidgets('an onboarded install goes straight to Home and the banner shows missing permissions', (tester) async {
@@ -139,7 +156,7 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byKey(const Key('permission-banner')), findsOneWidget);
-    expect(find.text('Usage access · Display over other apps'), findsOneWidget);
+    expect(find.text('Usage access · Display over apps'), findsOneWidget);
 
     // Tapping through opens the permissions screen; granting refreshes the banner.
     await tester.tap(find.byKey(const Key('permission-banner')));
@@ -167,7 +184,7 @@ void main() {
     await tester.tap(find.byKey(const Key('option-warn-only')));
     await tester.pumpAndSettle();
     expect(h.state.settings['protection'], 'warn-only');
-    expect(find.text('Warn only'), findsOneWidget);
+    expect(find.text('Warnings only'), findsOneWidget);
 
     final put = h.requests.singleWhere((r) => r.url.path == '/api/settings');
     expect(jsonDecode(put.body), {'protection': 'warn-only'});

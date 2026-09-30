@@ -74,7 +74,7 @@ void main() {
 
     final n = scheduler.pending[id]!;
     expect(n.atUtc, DateTime.utc(2026, 10, 2, 12, 26, 30));
-    expect(n.title, 'Restricted: XAUUSD');
+    expect(n.title, 'Cover is on · gold');
     expect(n.channel, 'ladder_urgent');
   });
 }

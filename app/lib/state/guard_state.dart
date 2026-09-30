@@ -93,6 +93,16 @@ class GuardState extends ChangeNotifier {
   List<GuardPermission> get missingPermissions =>
       _permissions.entries.where((e) => !e.value).map((e) => e.key).toList();
 
+  /// Calendar events as synced (every impact level), or the sample calendar.
+  List<Map<String, dynamic>> get events => _payload?.events ?? SampleData.events;
+
+  Map<String, dynamic>? eventById(String id) {
+    for (final e in events) {
+      if (e['id'] == id) return e;
+    }
+    return null;
+  }
+
   String titleFor(String eventId) => _payload?.titleFor(eventId) ?? SampleData.titleFor(eventId);
 
   /// When the event is due, in the phone's local time. Null if unknown.

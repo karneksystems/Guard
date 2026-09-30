@@ -1,169 +1,44 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:rule_engine/rule_engine.dart';
 
 import '../features/tracker.dart';
+import '../state/covers.dart';
 import '../state/guard_controller.dart';
 import '../state/guard_state.dart';
 import '../theme/tokens.dart';
+import '../ui/parts.dart';
+import '../ui/words.dart';
 import 'digest_screen.dart';
 import 'pack_screen.dart';
 import 'permissions_screen.dart';
 import 'tracker_screen.dart';
 
-/// Home, per the brief: today's windows, next event countdown, protection mode,
-/// daily-loss tracker, minimum-days countdown. Scannable in two seconds.
-class HomeScreen extends StatelessWidget {
+/// Home: one hero fact. The countdown to the next cover, the cover that's on,
+/// or all clear. Everything else is one line or one number beneath it.
+/// Boards: docs/redesign/grok-final/phone/home-*.png.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.now});
 
-  /// Injected by tests; the wall clock otherwise.
+  /// Injected by tests; the controller's clock otherwise.
   final DateTime? now;
 
   @override
-  Widget build(BuildContext context) {
-    final state = GuardScope.of(context);
-    final c = ControllerScope.of(context);
-    final windows = state.windows;
-    final t = state.tracker;
-    final local = (now ?? c.now).toLocal();
-    final today = Tracker.dateKey(local);
-    final room = t.roomLeft(today);
-    final tomorrow = Tracker.dateKey(local.add(const Duration(days: 1)));
-    final tomorrowCount = windows.where((w) => Tracker.dateKey(DateTime.parse(w.opensAtUtc).toLocal()) == tomorrow).length;
-    final weekend = t.weekendWarning && local.weekday == DateTime.friday && local.hour >= 12;
-    final next = windows.isEmpty ? null : windows.first;
-    final text = Theme.of(context).textTheme;
-    final protection = (state.settings['protection'] as String? ?? 'soft-gate').replaceAll('-', ' ');
-    final mode = state.settings['mode'] == 'firm-match' ? 'Firm match' : 'Conservative';
-    final age = state.syncAge;
-    final syncLine = state.isSample
-        ? 'Sample data · no backend configured'
-        : 'Last sync ${age!.inMinutes < 1 ? 'just now' : '${age.inMinutes} min ago'}';
-
-    return ListView(
-      padding: const EdgeInsets.all(Tokens.gutter),
-      children: [
-        Text('Guard', style: text.headlineMedium),
-        const SizedBox(height: 4),
-        Text('${_cap(protection)} · $mode · ${state.instruments.length} instruments · $syncLine', style: text.bodySmall),
-        const SizedBox(height: Tokens.gutter),
-        const PermissionBanner(),
-        if (!state.isSample && (state.calendarAge == null || state.calendarAge! > const Duration(minutes: 60))) ...[
-          Card(
-            key: const Key('home-feed-stale'),
-            color: Tokens.statusWarn.withValues(alpha: 0.12),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(state.calendarAge == null
-                  ? 'The calendar feed has not loaded yet. Windows below may be incomplete.'
-                  : 'The calendar feed is ${state.calendarAge!.inMinutes} minutes old. Times below may have moved.'),
-            ),
-          ),
-          const SizedBox(height: Tokens.gutter),
-        ],
-        if (state.missingPermissions.isNotEmpty) const SizedBox(height: Tokens.gutter),
-        if (state.rulesChanged != null && state.flags.rulesChangedFlag) ...[
-          Card(
-            key: const Key('home-rules-changed'),
-            color: Tokens.statusWarn.withValues(alpha: 0.12),
-            child: ListTile(
-              title: Text('${state.packs.index[state.rulesChanged!.firmId]?.firmName ?? state.rulesChanged!.firmId}: rules changed'),
-              subtitle: Text('Pack ${state.rulesChanged!.from} to ${state.rulesChanged!.to}. Tap to read what moved.'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PackScreen(firmId: state.rulesChanged!.firmId))),
-            ),
-          ),
-          const SizedBox(height: Tokens.gutter),
-        ],
-        _NextWindowCard(window: next, titleFor: state.titleFor, sourceFor: state.sourceFor, now: local.toUtc()),
-        const SizedBox(height: Tokens.gutter),
-        if (weekend) ...[
-          Card(
-            key: const Key('home-weekend'),
-            color: Tokens.statusWarn.withValues(alpha: 0.12),
-            child: const Padding(
-              padding: EdgeInsets.all(14),
-              child: Text('Weekend hold: flat before the close unless your firm allows holding over the weekend.'),
-            ),
-          ),
-          const SizedBox(height: Tokens.gutter),
-        ],
-        Text('Windows ahead', style: text.titleMedium),
-        if (state.engineNotes.isNotEmpty)
-          Text(state.engineNotes.join(' · '), key: const Key('home-notes'), style: text.bodySmall?.copyWith(color: Tokens.statusWarn)),
-        const SizedBox(height: 8),
-        if (windows.isEmpty)
-          const Text('No restricted windows on your instruments.')
-        else
-          for (final w in windows) ...[
-            _WindowRow(window: w, titleFor: state.titleFor),
-            const Divider(height: 1),
-          ],
-        const SizedBox(height: Tokens.gutter),
-        Row(children: [
-          Expanded(
-            child: _StatTile(
-              key: const Key('home-loss'),
-              label: 'Daily loss room',
-              value: room == null ? 'Set' : '${t.currency}${_money(room)}',
-              note: room == null ? 'tap to set your limit' : 'of ${t.currency}${_money(t.dailyLossLimit!)}, manual',
-              onTap: () => _openTracker(context),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _StatTile(
-              key: const Key('home-days'),
-              label: 'Min. trading days',
-              value: t.minTradingDays == 0 ? 'Off' : '${t.tradedDays()} of ${t.minTradingDays}',
-              note: t.minTradingDays == 0 ? 'tap to set' : '${t.daysToGo} to go',
-              onTap: () => _openTracker(context),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 12),
-        ListTile(
-          key: const Key('home-tomorrow'),
-          contentPadding: EdgeInsets.zero,
-          title: Text(tomorrowCount == 0 ? 'Tomorrow: clear' : 'Tomorrow: $tomorrowCount restricted ${tomorrowCount == 1 ? 'window' : 'windows'}'),
-          subtitle: Text('Digest at ${state.settings['digestLocalTime'] ?? '20:00'} tonight', style: text.bodySmall),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DigestScreen(now: now))),
-        ),
-        const SizedBox(height: Tokens.gutter),
-        Text('We never touch your trades.', style: text.bodySmall),
-      ],
-    );
-  }
-
-  static void _openTracker(BuildContext context) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TrackerScreen()));
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-/// Rebuilds every thirty seconds so the countdown moves. The wall clock is
-/// the controller's, so tests can pin it.
-class _NextWindowCard extends StatefulWidget {
-  const _NextWindowCard({required this.window, required this.titleFor, required this.sourceFor, required this.now});
+/// What the hero says right now.
+enum HeroPhase { live, soon, next, clear }
 
-  final Window? window;
-  final String Function(String eventId) titleFor;
-  final String Function(String eventId) sourceFor;
-  final DateTime now;
-
-  @override
-  State<_NextWindowCard> createState() => _NextWindowCardState();
-}
-
-class _NextWindowCardState extends State<_NextWindowCard> {
+class _HomeScreenState extends State<HomeScreen> {
   Timer? _tick;
-  Duration _elapsed = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _tick = Timer.periodic(const Duration(seconds: 30), (t) {
-      if (mounted) setState(() => _elapsed = Duration(seconds: 30 * t.tick));
+    // Seconds matter four minutes before CPI.
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
     });
   }
 
@@ -173,106 +48,348 @@ class _NextWindowCardState extends State<_NextWindowCard> {
     super.dispose();
   }
 
-  /// "in 2 h 14 min", "opens in 4 min", "open, 6 min left", or "closed".
-  static String countdown(Window w, DateTime now) {
-    final opens = DateTime.parse(w.opensAtUtc).toUtc();
-    final closes = DateTime.parse(w.closesAtUtc).toUtc();
-    if (now.isBefore(opens)) {
-      final d = opens.difference(now);
-      if (d.inMinutes < 1) return 'opens in under a minute';
-      if (d.inHours < 1) return 'opens in ${d.inMinutes} min';
-      if (d.inHours < 24) return 'in ${d.inHours} h ${d.inMinutes % 60} min';
-      return 'in ${d.inDays} d ${d.inHours % 24} h';
-    }
-    if (now.isBefore(closes)) return 'open, ${(closes.difference(now).inSeconds / 60).ceil()} min left';
-    return 'closed';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final w = widget.window;
-    final titleFor = widget.titleFor;
-    final sourceFor = widget.sourceFor;
-    final now = widget.now.add(_elapsed);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Tokens.gutter),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(w == null ? 'ALL CLEAR' : 'NEXT WINDOW', style: text.bodySmall?.copyWith(letterSpacing: 1.2, color: Tokens.brand)),
-          const SizedBox(height: 6),
-          Text(w == null ? 'Nothing scheduled' : w.instrument, style: text.displayMedium),
-          if (w != null) ...[
-            Text(countdown(w, now), key: const Key('home-countdown'), style: text.titleMedium?.copyWith(color: Tokens.brand)),
-            const SizedBox(height: 4),
-            Text(w.reasons.map(titleFor).join(' · '), style: text.bodyLarge),
-            const SizedBox(height: 4),
-            Text('${_hhmm(w.opensAtUtc)} to ${_hhmm(w.closesAtUtc)} UTC', style: text.bodySmall),
-            const SizedBox(height: 2),
-            Text(w.reasons.map(sourceFor).toSet().join(' · '), style: text.bodySmall?.copyWith(color: Tokens.brand)),
-          ],
-        ]),
+    final state = GuardScope.of(context);
+    final c = ControllerScope.of(context);
+    final now = (widget.now ?? c.now).toUtc();
+    final covers = coversFor(state, test: c.testWindow);
+    final wide = MediaQuery.sizeOf(context).width >= Tokens.compactMax;
+
+    final hero = _Hero.at(covers, now);
+    final t = state.tracker;
+    final today = Tracker.dateKey(now.toLocal());
+    final room = t.roomLeft(today);
+    final tomorrowCount = covers.where((x) => dayWord(x.opens, now) == 'Tomorrow').length;
+
+    final notices = <Widget>[
+      if (state.missingPermissions.isNotEmpty) const PermissionBanner(),
+      if (!state.isSample && (state.calendarAge == null || state.calendarAge! > const Duration(minutes: 60)))
+        _Notice(
+          key: const Key('home-feed-stale'),
+          text: state.calendarAge == null
+              ? "The news calendar hasn't loaded yet. Times below may be missing."
+              : 'The news calendar is ${state.calendarAge!.inMinutes} minutes old. Times may have moved.',
+        ),
+      if (state.rulesChanged != null && state.flags.rulesChangedFlag)
+        _Notice(
+          key: const Key('home-rules-changed'),
+          text: "${state.packs.index[state.rulesChanged!.firmId]?.firmName ?? 'Your firm'} changed its news rules. Tap to see what moved.",
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PackScreen(firmId: state.rulesChanged!.firmId))),
+        ),
+      if (t.weekendWarning && now.toLocal().weekday == DateTime.friday && now.toLocal().hour >= 12)
+        const _Notice(
+          key: Key('home-weekend'),
+          text: 'Weekend hold: be flat before the close unless your firm allows holding over the weekend.',
+        ),
+      for (final note in state.engineNotes.map(_plainNote).whereType<String>().toSet())
+        _Notice(key: const Key('home-notes'), text: note),
+    ];
+
+    final metrics = Row(children: [
+      Expanded(
+        child: MetricTile(
+          key: const Key('home-loss'),
+          label: 'Loss room',
+          value: room == null ? 'Set' : money(t.currency, room),
+          onTap: () => _openTracker(context),
+        ),
       ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: MetricTile(
+          key: const Key('home-days'),
+          label: 'Days',
+          value: t.minTradingDays == 0 ? 'Off' : '${t.tradedDays()} of ${t.minTradingDays}',
+          onTap: () => _openTracker(context),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: MetricTile(
+          key: const Key('home-tomorrow'),
+          label: 'Tomorrow',
+          value: '$tomorrowCount',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DigestScreen(now: widget.now))),
+        ),
+      ),
+    ]);
+
+    final column = [
+      _Header(state: state, phase: hero.phase),
+      const SizedBox(height: 14),
+      for (final n in notices) ...[n, const SizedBox(height: 10)],
+      _HeroPanel(hero: hero, now: now),
+      if (hero.peek != null) ...[
+        const SizedBox(height: 10),
+        _Peek(label: hero.peekLabel, cover: hero.peek!, now: now),
+      ],
+      const SizedBox(height: 10),
+      metrics,
+      const Promise(),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Tokens.gutter, 12, Tokens.gutter, Tokens.gutter),
+      children: [
+        if (wide)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: column),
+            ),
+          )
+        else
+          ...column,
+      ],
     );
+  }
+
+  static void _openTracker(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TrackerScreen()));
+
+  /// Engine notes in the trader's words. Unknown notes stay out of sight.
+  static String? _plainNote(String note) {
+    if (note.contains('needs Pro')) return "Your firm's rules need Pro. Guard is using its standard cover.";
+    if (note.contains('not downloaded')) return "Your firm's rules haven't downloaded yet. Guard is using its standard cover.";
+    if (note.contains('account type')) return "Pick your account type in Settings to use your firm's rules.";
+    if (note.contains('unverified')) return "Your firm's rules aren't checked yet, so Guard uses the wider window.";
+    if (note.contains('does not restrict')) return "Your firm doesn't restrict news on this account.";
+    return null;
   }
 }
 
-class _WindowRow extends StatelessWidget {
-  const _WindowRow({required this.window, required this.titleFor});
+class _Hero {
+  _Hero(this.phase, this.cover, this.remaining, this.progress, this.peek, this.peekLabel, this.endedToday);
 
-  final Window window;
-  final String Function(String eventId) titleFor;
+  final HeroPhase phase;
+  final Cover? cover;
+  final Duration remaining;
+  final double progress;
+  final Cover? peek;
+  final String peekLabel;
+  final bool endedToday;
+
+  static const soonLead = Duration(minutes: 5);
+
+  factory _Hero.at(List<Cover> covers, DateTime now) {
+    final live = covers.where((c) => c.liveAt(now)).toList();
+    final ahead = covers.where((c) => c.opens.isAfter(now)).toList();
+    final endedToday = covers.any((c) => c.endedAt(now) && sameLocalDay(c.opens, now));
+
+    Cover? peekAfter(Cover? hero) {
+      for (final c in ahead) {
+        if (!identical(c, hero)) return c;
+      }
+      return null;
+    }
+
+    String peekLabelFor(Cover? p) => p != null && sameLocalDay(p.opens, now) ? 'Also today' : 'Next cover';
+
+    if (live.isNotEmpty) {
+      final c = live.reduce((a, b) => b.closes.isAfter(a.closes) ? b : a);
+      final left = c.closes.difference(now);
+      final whole = c.closes.difference(c.opens).inSeconds;
+      final p = peekAfter(c);
+      return _Hero(HeroPhase.live, c, left, whole <= 0 ? 0 : left.inSeconds / whole, p, peekLabelFor(p), endedToday);
+    }
+    final next = ahead.isEmpty ? null : ahead.first;
+    if (next != null && sameLocalDay(next.opens, now)) {
+      final left = next.opens.difference(now);
+      final soon = left <= soonLead;
+      final scale = soon ? soonLead : const Duration(hours: 1);
+      final p = peekAfter(next);
+      return _Hero(soon ? HeroPhase.soon : HeroPhase.next, next, left,
+          (left.inSeconds / scale.inSeconds).clamp(0.0, 1.0), p, peekLabelFor(p), endedToday);
+    }
+    return _Hero(HeroPhase.clear, null, Duration.zero, 1, next, 'Next cover', endedToday);
+  }
+
+  Color get color => switch (phase) {
+        HeroPhase.live => Tokens.red,
+        HeroPhase.soon => Tokens.amber,
+        HeroPhase.next || HeroPhase.clear => Tokens.sky,
+      };
+
+  String get kicker => switch (phase) {
+        HeroPhase.live => 'Cover is on',
+        HeroPhase.soon => 'Opens soon',
+        HeroPhase.next => 'Next cover',
+        HeroPhase.clear => 'All clear',
+      };
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.state, required this.phase});
+
+  final GuardState state;
+  final HeroPhase phase;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(children: [
-        Container(width: 3, height: 36, color: Tokens.statusRestricted),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${window.instrument} · ${window.reasons.map(titleFor).join(', ')}', style: text.bodyMedium),
-            Text('${window.opensAtUtc.substring(0, 10)} · ${_hhmm(window.opensAtUtc)} to ${_hhmm(window.closesAtUtc)} UTC', style: text.bodySmall),
+    final shade = Shade.of(context);
+    final protection = state.settings['protection'] as String? ?? 'soft-gate';
+    final what = switch (protection) {
+      'warn-only' => 'Warnings only',
+      'hard-block' => 'Block is on',
+      _ => 'Cover is on',
+    };
+    final markets = marketsLine(state.instruments.map((i) => i['symbol'] as String));
+    final dot = switch (phase) {
+      HeroPhase.live => Tokens.red,
+      HeroPhase.soon => Tokens.amber,
+      HeroPhase.next => Tokens.sky,
+      HeroPhase.clear => Tokens.statusClear,
+    };
+    return Row(children: [
+      Text('Guard', style: TextStyle(fontFamily: Tokens.displayFamily, fontSize: 20, fontWeight: FontWeight.w600, color: shade.text)),
+      const SizedBox(width: 12),
+      const Spacer(),
+      Flexible(
+        flex: 4,
+        child: Container(
+          key: const Key('home-status'),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: shade.surface,
+            borderRadius: BorderRadius.circular(Tokens.radiusSm),
+            border: Border.all(color: shade.hairline),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(markets.isEmpty ? what : '$what · $markets',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 12, fontWeight: FontWeight.w600, color: shade.muted)),
+            ),
           ]),
         ),
-        Text(window.verified ? '' : 'unverified', style: text.bodySmall?.copyWith(color: Tokens.statusWarn)),
+      ),
+    ]);
+  }
+}
+
+class _HeroPanel extends StatelessWidget {
+  const _HeroPanel({required this.hero, required this.now});
+
+  final _Hero hero;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final shade = Shade.of(context);
+    final cover = hero.cover;
+    final big = hero.phase == HeroPhase.clear ? 'Clear' : countdown(hero.remaining);
+    final under = switch (hero.phase) {
+      HeroPhase.live => 'until you can trade again',
+      HeroPhase.soon || HeroPhase.next => 'until cover starts',
+      HeroPhase.clear => hero.endedToday ? 'nothing else today' : 'nothing today',
+    };
+    return Panel(
+      key: const Key('home-hero'),
+      accent: hero.phase == HeroPhase.live || hero.phase == HeroPhase.soon ? hero.color : null,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      child: Column(children: [
+        Kicker(hero.kicker, key: Key('home-phase-${hero.phase.name}'), color: hero.phase == HeroPhase.next ? shade.accent : hero.color, size: 12),
+        const SizedBox(height: 18),
+        PhaseRing(
+          size: 168,
+          stroke: Tokens.ringStrokeHome,
+          color: hero.color,
+          progress: hero.progress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              FittedBox(
+                child: Text(big,
+                    key: const Key('home-countdown'),
+                    style: TextStyle(
+                      fontFamily: Tokens.displayFamily,
+                      fontSize: 40,
+                      height: 1,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -1,
+                      color: hero.phase == HeroPhase.next ? shade.text : hero.color,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
+              ),
+              const SizedBox(height: 8),
+              Kicker(under, size: 9),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (cover != null) ...[
+          Text('${cover.markets} · ${cover.title}',
+              key: const Key('home-what'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: Tokens.displayFamily, fontSize: Tokens.typeSymbol, fontWeight: FontWeight.w600, color: shade.text)),
+          const SizedBox(height: 6),
+          Text('${dayWord(cover.opens, now)} · ${span(cover.opens, cover.closes)}',
+              style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 15, color: shade.muted)),
+        ] else
+          Text(hero.endedToday ? 'No more high impact news for you today.' : 'No high impact news for you today.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 15, color: shade.muted)),
       ]),
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({super.key, required this.label, required this.value, required this.note, this.onTap});
+class _Peek extends StatelessWidget {
+  const _Peek({required this.label, required this.cover, required this.now});
 
   final String label;
-  final String value;
-  final String note;
-  final VoidCallback? onTap;
+  final Cover cover;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label.toUpperCase(), style: text.bodySmall?.copyWith(letterSpacing: 1)),
-          const SizedBox(height: 4),
-          Text(value, style: text.titleLarge),
-          Text(note, style: text.bodySmall),
-        ]),
-      ),
-      ),
+    final shade = Shade.of(context);
+    final today = sameLocalDay(cover.opens, now);
+    return Panel(
+      key: const Key('home-peek'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      // The event name gives way first; the label only goes on very narrow
+      // screens, where the bars and the time still say it.
+      child: LayoutBuilder(builder: (context, box) {
+        return Row(children: [
+          if (box.maxWidth >= 330) ...[Kicker(label), const SizedBox(width: 12)],
+          ImpactBars(cover.impact, height: 11),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(cover.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 13, fontWeight: FontWeight.w600, color: shade.text)),
+          ),
+          const SizedBox(width: 8),
+          Text(today ? clock(cover.opens) : '${dayWord(cover.opens, now)} · ${clock(cover.opens)}',
+              maxLines: 1,
+              style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 13, color: shade.muted)),
+        ]);
+      }),
     );
   }
 }
 
-String _money(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+/// A plain amber note above the hero: stale feed, rule change, weekend.
+class _Notice extends StatelessWidget {
+  const _Notice({super.key, required this.text, this.onTap});
 
-String _hhmm(String isoUtc) => isoUtc.substring(11, 16);
+  final String text;
+  final VoidCallback? onTap;
 
-String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  @override
+  Widget build(BuildContext context) => Panel(
+        accent: Tokens.amber,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        onTap: onTap,
+        child: Row(children: [
+          Expanded(child: Text(text, style: TextStyle(fontFamily: Tokens.bodyFamily, fontSize: 13, color: Shade.of(context).text))),
+          if (onTap != null) Icon(Icons.chevron_right, size: 18, color: Shade.of(context).muted),
+        ]),
+      );
+}

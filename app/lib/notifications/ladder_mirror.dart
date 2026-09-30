@@ -1,4 +1,5 @@
 import '../sync/sync_payload.dart';
+import '../ui/words.dart';
 import 'notification_scheduler.dart';
 import 'reminders.dart';
 import 'rung_words.dart';
@@ -60,7 +61,7 @@ class LadderMirror {
       final words = RungWords.forRung(
         kind: rung['kind'] as String,
         instrument: instrument,
-        eventTitles: reasons.map(payload.titleFor).toList(),
+        eventTitles: _names(payload, reasons),
         opensHhmm: _hhmm(window?['opensAtUtc'] as String?),
         closesHhmm: _hhmm(window?['closesAtUtc'] as String?),
       );
@@ -115,7 +116,7 @@ class LadderMirror {
     final words = RungWords.forRung(
       kind: rung['kind'] as String,
       instrument: window?['instrument'] as String? ?? 'your instrument',
-      eventTitles: reasons.map(payload.titleFor).toList(),
+      eventTitles: _names(payload, reasons),
       opensHhmm: _hhmm(window?['opensAtUtc'] as String?),
       closesHhmm: _hhmm(window?['closesAtUtc'] as String?),
     );
@@ -132,5 +133,20 @@ class LadderMirror {
     ));
   }
 
-  static String _hhmm(String? isoUtc) => isoUtc == null || isoUtc.length < 16 ? '' : isoUtc.substring(11, 16);
+  /// Local clock time, the way every alert says it.
+  static String _hhmm(String? isoUtc) {
+    final t = isoUtc == null ? null : DateTime.tryParse(isoUtc);
+    return t == null ? '' : clock(t);
+  }
+
+  /// "EUR CPI", the short name a trader uses, the same on every rung.
+  static List<String> _names(SyncPayload payload, List<String> ids) {
+    final names = <String>[];
+    for (final id in ids) {
+      final e = payload.events.where((e) => e['id'] == id).firstOrNull;
+      final n = e == null ? payload.titleFor(id) : eventShort(e['currency'] as String? ?? '', e['title'] as String? ?? 'News');
+      if (!names.contains(n)) names.add(n);
+    }
+    return names;
+  }
 }

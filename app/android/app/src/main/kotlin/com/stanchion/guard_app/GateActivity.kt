@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -23,8 +24,9 @@ import android.widget.TextView
 /**
  * The gate. Native, full-screen, over the lock screen, built in code so it
  * needs no resources and starts in a few milliseconds. Same words and actions
- * as the design: countdown, events, instrument, "We never touch your trades",
- * Stay out, Hold to view only (three seconds). Hard block hides the second.
+ * as the design (docs/redesign/grok-final/phone/gate-red.png): countdown,
+ * what and when, "We never touch your trades", Stay out, Hold to look only
+ * (three seconds). Block hides the second.
  * Colours follow app/lib/theme/tokens.dart.
  */
 class GateActivity : Activity() {
@@ -44,29 +46,39 @@ class GateActivity : Activity() {
         showOverLockScreen()
 
         val dp = resources.displayMetrics.density
+        val hard = store.protection == "hard-block"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(NAVY)
+            // docs/redesign/grok-final/phone/gate-red.png: ink ground, red tint at the top.
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(RED_TINT, INK_BG, INK_BG))
             setPadding((24 * dp).toInt(), (48 * dp).toInt(), (24 * dp).toInt(), (32 * dp).toInt())
         }
 
-        val label = text("NEWS WINDOW", 12f, AMBER, Typeface.BOLD).apply { letterSpacing = 0.12f }
-        val countdown = text("--:--", 64f, INK_TEXT, Typeface.BOLD)
-        val instrument = text(w.instrument, 28f, INK_TEXT, Typeface.BOLD)
-        val events = text(w.events.ifBlank { "High impact news" }, 17f, INK_TEXT, Typeface.NORMAL)
-        val until = text("Trading reopens at " + hhmm(w.closesAtMs), 14f, SKY, Typeface.NORMAL)
-        val promise = text("We never touch your trades. Looking is fine, trading now may break your firm's rules.", 14f, INK_MUTED, Typeface.NORMAL)
+        val label = text(if (hard) "BLOCK IS ON" else "COVER IS ON", 12f, RED, Typeface.BOLD).apply { letterSpacing = 0.14f }
+        val countdown = text("--:--", 72f, RED, Typeface.BOLD).apply { gravity = Gravity.CENTER_HORIZONTAL }
+        val until = text("until you can trade again", 14f, INK_MUTED, Typeface.NORMAL).apply { gravity = Gravity.CENTER_HORIZONTAL }
+        val what = text(w.events.ifBlank { "High impact news" }, 22f, INK_TEXT, Typeface.BOLD)
+        val whenLine = text("Today · " + hhmm(w.opensAtMs) + " to " + hhmm(w.closesAtMs), 16f, SKY, Typeface.NORMAL)
+        val mode = text(if (hard) "Block · no look" else "Cover · look ok", 14f, SKY, Typeface.NORMAL)
+        val promise = text(
+            if (hard) "We never touch your trades. Trading now may break your firm's rules."
+            else "We never touch your trades. Looking is fine. Trading now may break your firm's rules.",
+            14f, INK_MUTED, Typeface.NORMAL,
+        ).apply { gravity = Gravity.CENTER_HORIZONTAL }
 
-        val stayOut = button("Stay out", AMBER, NAVY).apply {
+        val stayOut = button("Stay out", RED, Color.WHITE, 0).apply {
             setOnClickListener { stayOut(w) }
         }
-        val holdView = button("Hold to view only", Color.TRANSPARENT, INK_TEXT).apply {
+        val holdView = button("Hold to look only", INK_SURFACE, INK_TEXT, SKY_LINE).apply {
             setOnTouchListener { v, e -> onHold(v, e, w) }
-            visibility = if (store.protection == "hard-block") View.GONE else View.VISIBLE
+            visibility = if (hard) View.GONE else View.VISIBLE
         }
 
-        listOf(label, countdown, instrument, events, until).forEach { root.addView(it, wrap(dp, 6)) }
+        root.addView(label, wrap(dp, 20))
+        listOf(countdown, until).forEach { root.addView(it, wrap(dp, 4)) }
+        root.addView(View(this), LinearLayout.LayoutParams(0, (28 * dp).toInt()))
+        listOf(what, whenLine, mode).forEach { root.addView(it, wrap(dp, 6)) }
         root.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
         root.addView(promise, wrap(dp, 16))
         root.addView(stayOut, button(dp))
@@ -103,7 +115,7 @@ class GateActivity : Activity() {
                 }.also { holdHandler.postDelayed(it, 3000) }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                (v as Button).text = "Hold to view only"
+                (v as Button).text = "Hold to look only"
                 holdRunnable?.let { holdHandler.removeCallbacks(it) }
             }
         }
@@ -139,12 +151,18 @@ class GateActivity : Activity() {
         setTypeface(Typeface.SANS_SERIF, style)
     }
 
-    private fun button(s: String, bg: Int, fg: Int) = Button(this).apply {
+    private fun button(s: String, bg: Int, fg: Int, line: Int) = Button(this).apply {
         text = s
         isAllCaps = false
-        setBackgroundColor(bg)
+        stateListAnimator = null
+        background = GradientDrawable().apply {
+            setColor(bg)
+            cornerRadius = 8 * resources.displayMetrics.density
+            if (line != 0) setStroke((1 * resources.displayMetrics.density).toInt(), line)
+        }
         setTextColor(fg)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+        setTypeface(Typeface.SANS_SERIF, Typeface.BOLD)
     }
 
     private fun wrap(dp: Float, bottomDp: Int) = LinearLayout.LayoutParams(
@@ -159,15 +177,18 @@ class GateActivity : Activity() {
     companion object {
         fun hhmm(ms: Long): String {
             val c = java.util.Calendar.getInstance(java.util.TimeZone.getDefault()).apply { timeInMillis = ms }
-            return String.format("%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
+            return String.format("%d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
         }
 
-        // app/lib/theme/tokens.dart: brandDeep, sky, amber.
-        private const val NAVY = 0xFF08306B.toInt()
-        private const val INK_TEXT = 0xFFEDF3FA.toInt()
-        private const val INK_MUTED = 0xFFA9BCD3.toInt()
+        // app/lib/theme/tokens.dart (Grok pack): ink, sky, red.
+        private const val INK_BG = 0xFF070D18.toInt()
+        private const val INK_SURFACE = 0xFF0C1422.toInt()
+        private const val INK_TEXT = 0xFFEDF2F8.toInt()
+        private const val INK_MUTED = 0xFF8B9AAE.toInt()
         private const val SKY = 0xFF5BC8F5.toInt()
-        private const val AMBER = 0xFFF5A524.toInt()
+        private const val SKY_LINE = 0x595BC8F5
+        private const val RED = 0xFFE5484D.toInt()
+        private const val RED_TINT = 0xFF2A0F16.toInt()
 
         /**
          * From a service this is a background activity launch. Android 10+ allows
@@ -193,8 +214,8 @@ class GateActivity : Activity() {
             )
             nm.notify(4102, androidx.core.app.NotificationCompat.Builder(context, "ladder_urgent")
                 .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-                .setContentTitle("News window: ${w.instrument}")
-                .setContentText(w.events.ifBlank { "High impact news" } + ". Trading reopens at " + hhmm(w.closesAtMs) + ".")
+                .setContentTitle("Cover is on")
+                .setContentText(w.events.ifBlank { "High impact news" } + ". Stay out until " + hhmm(w.closesAtMs) + ".")
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(pi, true)

@@ -15,6 +15,8 @@ import '../sync/api_client.dart';
 import '../sync/sync_payload.dart';
 import '../sync/sync_service.dart';
 import '../sync/sync_store.dart';
+import '../ui/words.dart';
+import 'covers.dart';
 import 'guard_state.dart';
 import 'news_phase.dart';
 
@@ -69,6 +71,12 @@ class GuardController {
 
   /// The debug test window, kept in the gate schedule until it closes.
   GateWindowSpec? _testWindow;
+
+  /// The window a tester started from Settings, while it lasts.
+  GateWindowSpec? get testWindow {
+    final t = _testWindow;
+    return t != null && t.closesAtMs > _now().toUtc().millisecondsSinceEpoch ? t : null;
+  }
 
   /// Ticks whenever the schedule the gate sees changes, the test window
   /// included, so the glow and the countdown re-read [newsNow].
@@ -266,9 +274,8 @@ class GuardController {
     await pushGateSchedule();
     final sched = mirror?.scheduler;
     if (sched != null) {
-      String hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-      final t1 = RungWords.forRung(kind: 't-1', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
-      final open = RungWords.forRung(kind: 'open', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: hhmm(opens), closesHhmm: hhmm(closes));
+      final t1 = RungWords.forRung(kind: 't-1', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: clock(opens), closesHhmm: clock(closes));
+      final open = RungWords.forRung(kind: 'open', instrument: 'TEST', eventTitles: const ['Test window'], opensHhmm: clock(opens), closesHhmm: clock(closes));
       await sched.schedule(ScheduledNotification(id: kTestIdBase + 1, alertId: 'test:t-1', title: t1.title, body: t1.body, atUtc: opens.subtract(const Duration(minutes: 1)), channel: t1.channel));
       await sched.schedule(ScheduledNotification(id: kTestIdBase + 2, alertId: 'test:open', title: open.title, body: open.body, atUtc: opens, channel: open.channel));
     }
@@ -286,7 +293,7 @@ class GuardController {
     }
     await r.reconcile(
       windows: state.windows,
-      titleFor: state.titleFor,
+      titleFor: _shortName,
       digestLocalTime: state.settings['digestLocalTime'] as String? ?? '20:00',
       tracker: state.tracker,
       now: _now().toUtc(),
@@ -299,7 +306,7 @@ class GuardController {
           NewsSpan(
             windowId: w.windowId,
             instrument: w.instrument,
-            events: w.reasons.map(state.eventLabel).join(', '),
+            events: coverWhat(state, w),
             opens: DateTime.parse(w.opensAtUtc).toUtc(),
             closes: DateTime.parse(w.closesAtUtc).toUtc(),
           ),
@@ -359,6 +366,12 @@ class GuardController {
           ));
   }
 
+  /// "EUR CPI": the name alerts and the night before alert use.
+  String _shortName(String eventId) {
+    final e = state.eventById(eventId);
+    return e == null ? state.titleFor(eventId) : eventShort(e['currency'] as String? ?? '', e['title'] as String? ?? 'News');
+  }
+
   /// The clock, injectable for tests.
   DateTime get now => _now();
 
@@ -386,7 +399,7 @@ class GuardController {
               opensAtMs: DateTime.parse(w.opensAtUtc).toUtc().millisecondsSinceEpoch,
               closesAtMs: DateTime.parse(w.closesAtUtc).toUtc().millisecondsSinceEpoch,
               instrument: w.instrument,
-              events: w.reasons.map(state.eventLabel).join(', '),
+              events: coverWhat(state, w),
             ))
         .toList();
     final test = _testWindow;

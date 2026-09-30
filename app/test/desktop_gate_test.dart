@@ -68,8 +68,9 @@ void main() {
 
     expect(h.bridge.raised, [777]);
     expect(find.byType(GateScreen), findsOneWidget);
-    expect(find.text('XAUUSD'), findsOneWidget);
-    expect(find.textContaining('CPI Flash Estimate'), findsOneWidget);
+    // The trader's words: market and the short event name.
+    expect(find.text('Gold · EUR CPI'), findsOneWidget);
+    expect(find.text('Cover · look ok'), findsOneWidget);
     // 08:57 now, closes 09:05: eight minutes on the clock.
     expect(find.text('08:00'), findsOneWidget);
     expect(find.byKey(const Key('gate-hold-view')), findsOneWidget);

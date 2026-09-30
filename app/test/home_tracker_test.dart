@@ -47,8 +47,8 @@ void main() {
     await pump(tester, h);
     await tester.dragUntilVisible(find.byKey(const Key('home-loss')), find.byType(ListView), const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(find.text('Set'), findsOneWidget);
-    expect(find.text('Off'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-loss')), matching: find.text('Set')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-days')), matching: find.text('Off')), findsOneWidget);
     await tester.tap(find.byKey(const Key('home-loss')));
     await tester.pumpAndSettle();
     expect(find.byType(TrackerScreen), findsOneWidget);
@@ -93,8 +93,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.dragUntilVisible(find.byKey(const Key('home-loss')), find.byType(ListView), const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(find.text('\$380'), findsOneWidget);
-    expect(find.text('1 of 5'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-loss')), matching: find.text('\$380')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-days')), matching: find.text('1 of 5')), findsOneWidget);
   });
 
   testWidgets('reminders follow the tracker: weekend on by default, inactivity after a logged trade', (tester) async {
@@ -125,7 +125,8 @@ void main() {
     expect(find.byKey(const Key('home-weekend')), findsNothing, reason: 'Wednesday');
     await tester.dragUntilVisible(find.byKey(const Key('home-tomorrow')), find.byType(ListView), const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Tomorrow: 3 restricted windows'), findsOneWidget);
+    // Tomorrow (1 Oct) has two covers, EUR CPI and BoE Rate; PMI is medium.
+    expect(find.descendant(of: find.byKey(const Key('home-tomorrow')), matching: find.text('2')), findsOneWidget);
 
     await tester.pumpWidget(GuardApp(
       state: h.state,
@@ -150,18 +151,32 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 6, 40)))));
     await tester.pump();
-    expect(find.text('in 2 h 15 min'), findsOneWidget);
+    // Two hours out: the next cover, counting down in sky.
+    expect(find.byKey(const Key('home-phase-next')), findsOneWidget);
+    expect(find.text('2:15:00'), findsOneWidget);
+    expect(find.text('Gold, EUR · EUR CPI'), findsOneWidget);
+
+    await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 8, 51)))));
+    await tester.pump();
+    expect(find.byKey(const Key('home-phase-soon')), findsOneWidget);
+    expect(find.text('04:00'), findsOneWidget);
 
     await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 8, 57)))));
     await tester.pump();
-    expect(find.text('open, 8 min left'), findsOneWidget);
+    expect(find.byKey(const Key('home-phase-live')), findsOneWidget);
+    expect(find.text('08:00'), findsOneWidget);
+    expect(find.text('COVER IS ON'), findsOneWidget);
+
+    await tester.pumpWidget(GuardApp(state: h.state, controller: h.controller, home: Scaffold(body: HomeScreen(now: DateTime.utc(2026, 10, 1, 22)))));
+    await tester.pump();
+    expect(find.byKey(const Key('home-phase-clear')), findsOneWidget);
   });
 
   testWidgets('a viewed journal entry can be self-reported as traded', (tester) async {
     final h = Harness();
     await pump(tester, h);
     h.state.addJournal([GateOutcome(windowId: 'w1', outcome: 'viewed', atUtc: DateTime.utc(2026, 9, 30, 9))]);
-    await tester.tap(find.text('Journal'));
+    await tester.tap(find.text('Log'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('journal-traded-w1')));
     await tester.pumpAndSettle();

@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_local_notifications: ^22.3.1
+  flutter_svg: ^2.3.0
   http: ^1.6.0
   launch_at_startup: ^0.5.1
   path_provider: ^2.1.6
@@ -30,6 +31,8 @@ flutter:
   assets:
     - assets/tray/guard.ico
     - assets/tray/guard.png
+    - assets/flags/
+    - assets/icons/
   # Poppins (display) and Inter (body), both SIL Open Font License; licences sit
   # next to the files. Inter is the variable font, one file for every weight.
   fonts:

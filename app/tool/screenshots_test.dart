@@ -3,7 +3,7 @@
 //
 //   flutter test tool/screenshots_test.dart --update-goldens
 //
-// Output lands in tool/shots/ (ignored); copy to docs/redesign/shots/ to publish. Clock pinned to 08:51 UTC on 1 Oct 2026, four
+// Output lands in tool/shots/ (ignored); copy to docs/redesign/built/ to publish. Clock pinned to 08:51 UTC on 1 Oct 2026, four
 // minutes before the sample XAUUSD window for EUR CPI opens.
 import 'dart:io';
 
@@ -18,6 +18,8 @@ import 'package:guard_app/platform/platform_bridge.dart';
 import 'package:guard_app/screens/digest_screen.dart';
 import 'package:guard_app/screens/journal_screen.dart';
 import 'package:guard_app/screens/paywall_screen.dart';
+import 'package:guard_app/screens/permissions_screen.dart';
+import 'package:guard_app/screens/home_screen.dart';
 import 'package:guard_app/screens/settings_screen.dart';
 import 'package:guard_app/screens/tracker_screen.dart';
 import 'package:guard_app/screens/windows_screen.dart';
@@ -64,7 +66,7 @@ void main() {
     return (state, controller);
   }
 
-  Future<void> shot(WidgetTester tester, String name, Widget? home, {bool dark = true, bool onboarded = true, Size size = const Size(390, 844)}) async {
+  Future<void> shot(WidgetTester tester, String name, Widget? home, {bool dark = true, bool onboarded = true, Size size = const Size(428, 926), Future<void> Function(WidgetTester)? before}) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3;
     tester.platformDispatcher.platformBrightnessTestValue = dark ? Brightness.dark : Brightness.light;
@@ -73,29 +75,54 @@ void main() {
     final (state, controller) = world(onboarded: onboarded);
     await tester.pumpWidget(GuardApp(state: state, controller: controller, home: home));
     await tester.pump(const Duration(seconds: 1));
+    if (before != null) await before(tester);
     await expectLater(find.byType(GuardApp), matchesGoldenFile('shots/$name.png'));
   }
 
   Widget scaffold(Widget body) => Scaffold(body: SafeArea(child: body));
 
-  testWidgets('home dark', (t) => shot(t, '01-home-dark', null));
-  testWidgets('home light', (t) => shot(t, '02-home-light', null, dark: false));
-  testWidgets('gate', (t) => shot(t, '03-gate-desktop-and-android', GateScreen(
-        instrument: 'XAUUSD',
-        events: 'CPI Flash Estimate y/y 09:00',
+  GateScreen gate({required DateTime now, bool hard = false}) => GateScreen(
+        what: 'Gold · EUR CPI',
+        opensAtUtc: DateTime.utc(2026, 10, 1, 8, 55),
         closesAtUtc: DateTime.utc(2026, 10, 1, 9, 5),
-        hardBlock: false,
-        now: () => DateTime.utc(2026, 10, 1, 8, 58, 30),
+        hardBlock: hard,
+        now: () => now,
         onStayOut: () {},
         onView: () {},
         onExpired: () {},
-      )));
-  testWidgets('windows', (t) => shot(t, '04-windows', scaffold(const WindowsScreen())));
-  testWidgets('digest', (t) => shot(t, '05-digest', DigestScreen(now: DateTime.utc(2026, 9, 30, 19))));
-  testWidgets('journal', (t) => shot(t, '06-journal', scaffold(const JournalScreen())));
-  testWidgets('tracker', (t) => shot(t, '07-tracker', const TrackerScreen()));
+      );
+
+  testWidgets('home dark', (t) => shot(t, '01-home-dark', null));
+  testWidgets('home light', (t) => shot(t, '02-home-light', null, dark: false));
+  testWidgets('home clear', (t) => shot(t, '02b-home-clear', scaffold(HomeScreen(now: DateTime.utc(2026, 10, 1, 22)))));
+  testWidgets('gate', (t) => shot(t, '03-gate-desktop-and-android', gate(now: DateTime.utc(2026, 10, 1, 8, 58, 30))));
+  testWidgets('gate amber', (t) => shot(t, '03b-gate-amber', gate(now: DateTime.utc(2026, 10, 1, 8, 51))));
+  testWidgets('gate block', (t) => shot(t, '03c-gate-block', gate(now: DateTime.utc(2026, 10, 1, 8, 58, 30), hard: true)));
+  testWidgets('windows', (t) => shot(t, '04-today', scaffold(const WindowsScreen())));
+  testWidgets('digest', (t) => shot(t, '05-tomorrows-news', DigestScreen(now: DateTime.utc(2026, 9, 30, 19))));
+  testWidgets('journal', (t) => shot(t, '06-log', scaffold(const JournalScreen())));
+  testWidgets('tracker', (t) => shot(t, '07-daily-limits', const TrackerScreen()));
   testWidgets('settings', (t) => shot(t, '08-settings', scaffold(const SettingsScreen())));
   testWidgets('paywall', (t) => shot(t, '09-paywall', const PaywallScreen()));
-  testWidgets('onboarding', (t) => shot(t, '10-onboarding-step1', const OnboardingFlow(), onboarded: false));
+  testWidgets('permissions', (t) => shot(t, '09b-permissions', const PermissionsScreen()));
+  testWidgets('onboarding', (t) => shot(t, '10-setup-1', const OnboardingFlow(), onboarded: false));
+  testWidgets('onboarding 2', (t) async {
+    await shot(t, '10b-setup-2', const OnboardingFlow(), onboarded: false, before: (t) async {
+      await t.tap(find.byKey(const Key('onboarding-next')));
+      await t.pump();
+      await t.pump(const Duration(seconds: 1));
+    });
+  });
+  testWidgets('onboarding 3', (t) async {
+    await shot(t, '10c-setup-3', const OnboardingFlow(), onboarded: false, before: (t) async {
+      await t.tap(find.byKey(const Key('onboarding-next')));
+      await t.pump();
+      await t.pump(const Duration(seconds: 1));
+      await t.tap(find.byKey(const Key('onboarding-next')));
+      await t.pump();
+      await t.pump(const Duration(seconds: 1));
+    });
+  });
   testWidgets('tablet home', (t) => shot(t, '11-home-tablet', null, size: const Size(1180, 820)));
+  testWidgets('desktop gate', (t) => shot(t, '12-gate-desktop', gate(now: DateTime.utc(2026, 10, 1, 8, 58, 30)), size: const Size(1440, 900)));
 }
